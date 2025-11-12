@@ -47,6 +47,15 @@ document.addEventListener('DOMContentLoaded', () => {
   if (cancelBtn) cancelBtn.addEventListener('click', closeCallModal);
   const backdrop = document.querySelector('#callModal .modal__backdrop');
   if (backdrop) backdrop.addEventListener('click', closeCallModal);
+  // 座席モーダル関連
+  const seatConfirm = document.getElementById('confirmSeat');
+  if (seatConfirm) seatConfirm.addEventListener('click', confirmSeat);
+  const seatCancel = document.getElementById('cancelSeat');
+  if (seatCancel) seatCancel.addEventListener('click', closeSeatModal);
+  const seatBackdrop = document.querySelector('#seatModal .modal__backdrop');
+  if (seatBackdrop) seatBackdrop.addEventListener('click', closeSeatModal);
+  // プルダウンを動的に生成
+  populateSeatOptions();
 
   // LO残時間のタイマー開始
   startLoTimer();
@@ -57,13 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 /* ===== 席ID設定 ===== */
 function onSetSeat() {
-  const input = prompt('席IDを入力してください（例: C-05 / 1F-12）。QRからの再読み取りでも設定できます。', seatId || '');
-  if (input) {
-    seatId = input.trim();
-    localStorage.setItem('seatId', seatId);
-    updateSeatLabel();
-    showToast(`席IDを設定しました：${seatId}`);
-  }
+  openSeatModal();
 }
 function updateSeatLabel() {
   const el = document.getElementById('seatLabel');
@@ -135,12 +138,74 @@ function closeCallModal() {
   modal.setAttribute('aria-hidden', 'true');
 }
 
+/* ===== 座席選択モーダル ===== */
+function openSeatModal() {
+  const modal = document.getElementById('seatModal');
+  if (!modal) return;
+  modal.hidden = false;
+  modal.setAttribute('aria-hidden', 'false');
+  const sel = document.getElementById('seatSelect');
+  if (sel && seatId) sel.value = seatId;
+}
+
+function closeSeatModal() {
+  const modal = document.getElementById('seatModal');
+  if (!modal) return;
+  modal.hidden = true;
+  modal.setAttribute('aria-hidden', 'true');
+}
+
+function populateSeatOptions() {
+  const sel = document.getElementById('seatSelect');
+  if (!sel) return;
+  // クリア
+  sel.innerHTML = '';
+  // カウンター席 C-01 ～ C-10
+  const addOption = (value, label) => {
+    const opt = document.createElement('option');
+    opt.value = value;
+    opt.textContent = label;
+    sel.appendChild(opt);
+  };
+  addOption('', '選択してください');
+  for (let i = 1; i <= 10; i++) {
+    const v = `C-${String(i).padStart(2, '0')}`;
+    addOption(v, `カウンター席：${v}`);
+  }
+  // 1階テーブル 1F-01 ～ 1F-05
+  for (let i = 1; i <= 5; i++) {
+    const v = `1F-${String(i).padStart(2, '0')}`;
+    addOption(v, `1階テーブル：${v}`);
+  }
+  // 2階テーブル 2F-01 ～ 2F-15
+  for (let i = 1; i <= 15; i++) {
+    const v = `2F-${String(i).padStart(2, '0')}`;
+    addOption(v, `2階テーブル：${v}`);
+  }
+}
+
+function confirmSeat() {
+  const sel = document.getElementById('seatSelect');
+  if (!sel) return;
+  const val = sel.value;
+  if (!val) {
+    showToast('席を選択してください');
+    return;
+  }
+  seatId = val;
+  localStorage.setItem('seatId', seatId);
+  updateSeatLabel();
+  closeSeatModal();
+  showToast(`席IDを設定しました：${seatId}`);
+}
+
 async function confirmCall() {
   // 実際の呼び出し処理（ここは既存の onCallStaff の挙動を再利用）
   closeCallModal();
   try {
     // モック：実際は API 経由で通知
-    showToast(`スタッフ呼び出しを送信しました（席：${seatId}）`);
+    // スタッフ呼び出しは持続トーストにして、利用者が閉じるまで残す
+    showStickyToast(`スタッフ呼び出しを送信しました（席：${seatId}）`);
   } catch (e) {
     console.error(e);
     showToast('呼び出しに失敗しました');
@@ -220,4 +285,40 @@ function showToast(message) {
       st.pending = message;
     }
   }
+}
+
+/* ===== 持続トースト（閉じるボタンで消す） ===== */
+function showStickyToast(message) {
+  const toast = document.getElementById('toast');
+  if (!toast) return;
+  // クリア既存タイマー
+  if (toast._tm && toast._tm.timeoutId) {
+    clearTimeout(toast._tm.timeoutId);
+    toast._tm.timeoutId = null;
+  }
+  // 中身を作る
+  toast.innerHTML = '';
+  const span = document.createElement('span');
+  span.className = 'toast__msg';
+  span.textContent = message;
+  const btn = document.createElement('button');
+  btn.className = 'toast__close';
+  btn.type = 'button';
+  btn.textContent = '閉じる';
+  btn.addEventListener('click', () => {
+    toast.classList.remove('show');
+    // 中身を元に戻す
+    toast.innerHTML = '';
+    // reset timed toast state
+    if (toast._tm) {
+      toast._tm.visible = false;
+      if (toast._tm.timeoutId) {
+        clearTimeout(toast._tm.timeoutId);
+        toast._tm.timeoutId = null;
+      }
+    }
+  });
+  toast.appendChild(span);
+  toast.appendChild(btn);
+  toast.classList.add('show');
 }

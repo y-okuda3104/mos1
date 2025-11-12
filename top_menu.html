@@ -64,6 +64,21 @@
     </div>
   </div>
 
+  <!-- 座席選択モーダル -->
+  <div id="seatModal" class="modal" hidden aria-hidden="true">
+    <div class="modal__backdrop" data-close="true"></div>
+    <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="seatModalTitle">
+      <h3 id="seatModalTitle">席IDを選択</h3>
+      <p>プルダウンから席を選んで「設定」を押してください。</p>
+      <label for="seatSelect" class="visually-hidden">席を選択</label>
+      <select id="seatSelect" style="width:100%; padding:8px; margin:8px 0; font-size:16px;"></select>
+      <div class="modal__actions">
+        <button id="confirmSeat" class="primary">設定</button>
+        <button id="cancelSeat" class="secondary">閉じる</button>
+      </div>
+    </div>
+  </div>
+
   <footer class="app-footer">
     <small>footer</small>
     <!--<small>Top menu／Display remaining LO time／Closing notice</small> -->

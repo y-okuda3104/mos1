@@ -69,3 +69,12 @@ body {
 
 /* ========== Footer ========== */
 .app-footer { text-align: center; padding: 16px; color: #777; }
+
+/* Toast の閉じるボタン（持続表示用） */
+.toast { display: flex; align-items: center; gap: 10px; }
+.toast__msg { flex: 1; }
+.toast__close { background: rgba(255,255,255,0.12); color: #fff; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; }
+.toast__close:active { transform: translateY(1px); }
+
+/* 追加：視覚的に隠すがスクリーンリーダーには見えるラベル */
+.visually-hidden { position: absolute !important; height: 1px; width: 1px; overflow: hidden; clip: rect(1px, 1px, 1px, 1px); white-space: nowrap; }
