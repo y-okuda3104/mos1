@@ -76,7 +76,7 @@ function onSetSeat() {
 }
 function updateSeatLabel() {
   const el = document.getElementById('seatLabel');
-  if (el) el.textContent = `席：${seatId || '未設定'}`;
+  if (el) el.textContent = `座席：${seatId || '未設定'}`;
 }
 
 /* ===== LO残時間の表示・通知 ===== */
@@ -195,14 +195,14 @@ function confirmSeat() {
   if (!sel) return;
   const val = sel.value;
   if (!val) {
-    showToast('席を選択してください');
+    showToast('座席を選択してください');
     return;
   }
   seatId = val;
   localStorage.setItem('seatId', seatId);
   updateSeatLabel();
   closeSeatModal();
-  showToast(`席IDを設定しました：${seatId}`);
+  showToast(`座席を設定しました：${seatId}`);
 }
 
 async function confirmCall() {
@@ -211,7 +211,7 @@ async function confirmCall() {
   try {
     // モック：実際は API 経由で通知
     // 呼び出し成功は画面中央の大きなモーダルで表示（閉じるまで残る）
-    openCallResult(`スタッフを呼び出しました（席：${seatId}）`);
+    openCallResult(`スタッフを呼び出しました（座席：${seatId}）`);
   } catch (e) {
     console.error(e);
     showToast('呼び出しに失敗しました');

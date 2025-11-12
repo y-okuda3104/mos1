@@ -16,7 +16,7 @@
         <div class="status">
           <span id="seatLabel" aria-live="polite">席：未設定</span>
           <span id="loLabel" aria-live="polite">ラストオーダーまで：計算中...</span>
-          <button id="btnSetSeat" class="secondary">席ID設定</button>
+          <button id="btnSetSeat" class="secondary">座席変更</button>
         </div>
       </div>
       <div class="header-right">
@@ -80,9 +80,9 @@
   <div id="seatModal" class="modal" hidden aria-hidden="true">
     <div class="modal__backdrop" data-close="true"></div>
     <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="seatModalTitle">
-      <h3 id="seatModalTitle">席IDを選択</h3>
-      <p>プルダウンから席を選んで「設定」を押してください。</p>
-      <label for="seatSelect" class="visually-hidden">席を選択</label>
+      <h3 id="seatModalTitle">座席を選択</h3>
+      <p>ご利用になる座席を選択してください</p>
+      <label for="seatSelect" class="visually-hidden">座席を選択</label>
       <select id="seatSelect" style="width:100%; padding:8px; margin:8px 0; font-size:16px;"></select>
       <div class="modal__actions">
         <button id="confirmSeat" class="primary">設定</button>
