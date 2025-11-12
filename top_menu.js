@@ -99,7 +99,7 @@ function startLoTimer() {
     const remainMs = lo.getTime() - now.getTime();
     if (!label) return;
     if (remainMs <= 0) {
-      label.textContent = '閉店まで：0分（LO到達）';
+      label.textContent = 'ラストオーダーまで：0分（LO到達）';
       // 一度だけ通知
       if (!notifiedLO) {
         notifiedLO = true;
@@ -110,7 +110,7 @@ function startLoTimer() {
     const mins = Math.floor(remainMs / 1000 / 60);
     const hrs = Math.floor(mins / 60);
     const mm = String(mins % 60).padStart(2, '0');
-    label.textContent = `閉店まで：${hrs}時間${mm}分`;
+    label.textContent = `ラストオーダーまで：${hrs}時間${mm}分`;
   };
 
   tick();
