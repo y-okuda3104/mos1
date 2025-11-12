@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>みどり亭｜トップメニュー</title>
+  <!-- 同一フォルダ内のCSSを読み込み -->
+  <link rel="stylesheet" href="top_menu.css" />
+</head>
+<body>
+  <!-- ヘッダー：店舗名／席IDとLO残時間／現在時刻 -->
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="header-left">
+        <h1 id="storeName">みどり亭 本店</h1>
+        <div class="status">
+          <span id="seatLabel" aria-live="polite">席：未設定</span>
+          <span id="loLabel" aria-live="polite">閉店まで：計算中...</span>
+          <button id="btnSetSeat" class="secondary">席ID設定</button>
+        </div>
+      </div>
+      <div class="header-right">
+        <div id="currentTime" class="current-time" aria-live="polite">--:--:--</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- トップメニュー：メニュー一覧／注文履歴／スタッフ呼び出し -->
+  <main class="container">
+    <section class="grid">
+      <a class="card" href="menu.html">
+        <div class="card__icon" aria-hidden="true"></div>
+        <h2 class="card__title">メニュー一覧</h2>
+        <p class="card__desc">取り皿・おしぼりなどもこちらから</p>
+      </a>
+
+      <a class="card" href="order-history.html">
+        <div class="card__icon" aria-hidden="true"></div>
+        <h2 class="card__title">注文履歴</h2>
+        <!--<p class="card__desc">　</p> -->
+      </a>
+
+      <button class="card" id="btnCall" type="button" aria-label="スタッフ呼び出し">
+        <div class="card__icon" aria-hidden="true"></div>
+        <h2 class="card__title">スタッフ呼び出し</h2>
+        <p class="card__desc">スタッフを呼び出します</p>
+      </button>
+    </section>
+
+    <!-- 呼び出しの結果を表示するトースト -->
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  </main>
+
+  <!-- 呼び出し確認モーダル -->
+  <div id="callModal" class="modal" hidden aria-hidden="true">
+    <div class="modal__backdrop" data-close="true"></div>
+    <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="callModalTitle">
+      <h3 id="callModalTitle">スタッフ呼び出しの確認</h3>
+      <p>呼び出したらスタッフに通知されます。呼び出しますか？</p>
+      <div class="modal__actions">
+        <button id="confirmCall" class="primary">呼び出す</button>
+        <button id="cancelCall" class="secondary">閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="app-footer">
+    <small>footer</small>
+    <!--<small>Top menu／Display remaining LO time／Closing notice</small> -->
+  </footer>
+
+  <!-- 同一フォルダ内のJSを読み込み（deferで確実に後読み） -->
+  <script src="top_menu.js" defer></script>
+</body>
+</html>
