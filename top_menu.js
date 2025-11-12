@@ -62,6 +62,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 現在時刻の表示
   startClock();
+
+  // --- 新規: 呼び出し完了モーダル関連の初期化 ---
+  const closeResultBtn = document.getElementById('closeCallResult');
+  if (closeResultBtn) closeResultBtn.addEventListener('click', closeCallResult);
+  const resultBackdrop = document.querySelector('#callResultModal .modal__backdrop');
+  if (resultBackdrop) resultBackdrop.addEventListener('click', closeCallResult);
 });
 
 /* ===== 席ID設定 ===== */
@@ -204,8 +210,8 @@ async function confirmCall() {
   closeCallModal();
   try {
     // モック：実際は API 経由で通知
-    // スタッフ呼び出しは持続トーストにして、利用者が閉じるまで残す
-    showStickyToast(`スタッフ呼び出しを送信しました（席：${seatId}）`);
+    // 呼び出し成功は画面中央の大きなモーダルで表示（閉じるまで残る）
+    openCallResult(`スタッフを呼び出しました（席：${seatId}）`);
   } catch (e) {
     console.error(e);
     showToast('呼び出しに失敗しました');
@@ -287,38 +293,23 @@ function showToast(message) {
   }
 }
 
-/* ===== 持続トースト（閉じるボタンで消す） ===== */
-function showStickyToast(message) {
-  const toast = document.getElementById('toast');
-  if (!toast) return;
-  // クリア既存タイマー
-  if (toast._tm && toast._tm.timeoutId) {
-    clearTimeout(toast._tm.timeoutId);
-    toast._tm.timeoutId = null;
-  }
-  // 中身を作る
-  toast.innerHTML = '';
-  const span = document.createElement('span');
-  span.className = 'toast__msg';
-  span.textContent = message;
-  const btn = document.createElement('button');
-  btn.className = 'toast__close';
-  btn.type = 'button';
-  btn.textContent = '閉じる';
-  btn.addEventListener('click', () => {
-    toast.classList.remove('show');
-    // 中身を元に戻す
-    toast.innerHTML = '';
-    // reset timed toast state
-    if (toast._tm) {
-      toast._tm.visible = false;
-      if (toast._tm.timeoutId) {
-        clearTimeout(toast._tm.timeoutId);
-        toast._tm.timeoutId = null;
-      }
-    }
-  });
-  toast.appendChild(span);
-  toast.appendChild(btn);
-  toast.classList.add('show');
+/* ===== 呼び出し完了表示（中央モーダル） ===== */
+function openCallResult(message) {
+  const modal = document.getElementById('callResultModal');
+  const msg = document.getElementById('callResultMessage');
+  if (!modal) return;
+  if (msg) msg.textContent = message;
+  modal.hidden = false;
+  modal.setAttribute('aria-hidden', 'false');
+  const btn = document.getElementById('closeCallResult');
+  if (btn) btn.focus();
 }
+
+function closeCallResult() {
+  const modal = document.getElementById('callResultModal');
+  if (!modal) return;
+  modal.hidden = true;
+  modal.setAttribute('aria-hidden', 'true');
+}
+
+/* ===== 以前の showStickyToast はコール結果用に置き換えました（下部 toast は transient 用のまま維持） ===== */

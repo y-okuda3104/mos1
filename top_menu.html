@@ -49,6 +49,18 @@
 
     <!-- 呼び出しの結果を表示するトースト -->
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+    <!-- 呼び出し完了を大きく中央に表示するモーダル（新規） -->
+    <div id="callResultModal" class="modal" hidden aria-hidden="true">
+      <div class="modal__backdrop" data-close="true"></div>
+      <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="callResultTitle">
+        <h3 id="callResultTitle">呼び出し完了</h3>
+        <p id="callResultMessage">スタッフを呼び出しました</p>
+        <div class="modal__actions" style="justify-content:center;">
+          <button id="closeCallResult" class="primary">閉じる</button>
+        </div>
+      </div>
+    </div>
   </main>
 
   <!-- 呼び出し確認モーダル -->
