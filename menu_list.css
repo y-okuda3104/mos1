@@ -1,0 +1,109 @@
+/* ベース（トップページに合わせたフォント／背景） */
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans JP", Meiryo, sans-serif;
+  background: #fff8f0;
+  color: #333;
+  padding-bottom: 120px; /* ミニカート領域用 */
+}
+
+/* ヘッダー（トップと同様） */
+.app-header {
+  background: linear-gradient(180deg,#ff7f32,#ff8f45);
+  color: #fff;
+  padding: 12px 16px;
+}
+.header-inner{
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+}
+.header-left{ display:flex; flex-direction:column; gap:6px; }
+.header-right{ display:flex; align-items:center; }
+.app-header h1 { margin: 0 0 4px; font-size:20px; font-weight:700; }
+.current-time{ font-size:14px; background:rgba(255,255,255,0.12); padding:6px 10px; border-radius:8px; }
+.status {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
+.secondary {
+  background: #fff; color: #ff7f32; border: 1px solid #fff;
+  padding: 8px 12px; border-radius: 6px; cursor: pointer; text-align: center;
+}
+
+/* TOPへ ボタン（ヘッダー右・他ページでも再利用） */
+ .top-link {
+   display: inline-block;
+   margin-right: 12px;
+   padding: 8px 10px;
+   background: rgba(255,255,255,0.12);
+   color: #fff;
+   border-radius: 8px;
+   text-decoration: none;
+   font-weight: 700;
+ }
+ .top-link:focus, .top-link:hover {
+   background: rgba(255,255,255,0.18);
+   text-decoration: none;
+ }
+
+/* コンテナ共通 */
+.container { padding: 16px; }
+
+/* 検索バー */
+.search-bar {
+  display:flex; gap:8px; align-items:center; flex-wrap:wrap;
+  padding: 12px 16px 0 16px;
+}
+.search-bar input[type="text"] { flex:1; padding:8px 10px; border-radius:8px; border:1px solid #ddd; }
+.search-bar select { padding:8px 10px; border-radius:8px; border:1px solid #ddd; background:#fff; }
+
+/* メニューグリッド（カード） */
+#menuContainer {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  padding: 8px 16px 40px 16px;
+}
+.menuItem {
+  background:#fff; border:1px solid #eee; border-radius:10px; padding:12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06); display:flex; flex-direction:column; gap:8px;
+}
+.menuItem img {
+  width:100%; height:140px; object-fit:cover; border-radius:8px;
+}
+.menuItem .name { font-weight:700; font-size:16px; }
+.menuItem .price { color:#078000; font-weight:600; }
+.menuItem .meta { color:#666; font-size:13px; }
+
+/* ボタン */
+.menuItem button {
+  margin-top:auto; /* 下に揃える */
+  background:#ff7f32; color:#fff; border:none; padding:10px 12px; border-radius:8px; cursor:pointer;
+}
+.menuItem button[disabled] {
+  background:#ddd; color:#888; cursor:not-allowed;
+}
+
+/* sold out */
+.menuItem.soldOut { opacity:0.6; }
+
+/* ミニカート */
+#miniCart {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #fff;
+  border-top: 2px solid #ccc;
+  padding: 10px 16px;
+  box-shadow: 0 -4px 12px rgba(0,0,0,0.06);
+  z-index: 1000;
+}
+
+/* 小さい画面向け調整 */
+@media (max-width:480px) {
+  .menuItem img { height:110px; }
+  .search-bar { padding:10px; }
+}

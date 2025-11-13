@@ -77,3 +77,10 @@ body {
 
 /* 追加：視覚的に隠すがスクリーンリーダーには見えるラベル */
 .visually-hidden { position: absolute !important; height: 1px; width: 1px; overflow: hidden; clip: rect(1px, 1px, 1px, 1px); white-space: nowrap; }
+
+/* 無効状態の見た目（クールダウン時など） */
+.card[disabled], .primary[disabled], .secondary[disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
+}
