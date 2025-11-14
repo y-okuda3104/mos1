@@ -91,6 +91,17 @@ body {
 /* sold out */
 .menuItem.soldOut { opacity:0.6; }
 
+/* primary ボタン（トップと見た目を合わせる） */
+.primary {
+  background: #ff7f32;
+  color: #fff;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.primary:active { transform: translateY(1px); }
+
 /* ミニカート */
 #miniCart {
   position: fixed;
@@ -102,6 +113,39 @@ body {
   padding: 10px 16px;
   box-shadow: 0 -4px 12px rgba(0,0,0,0.06);
   z-index: 1000;
+}
+
+/* カート内の数量ボタン（小さめ） */
+ qty-btn {
+   display:inline-flex;
+   align-items:center;
+   justify-content:center;
+   min-width:36px;
+   height:32px;
+   padding:4px 8px;
+   border-radius:6px;
+   font-weight:700;
+   cursor:pointer;
+   margin-left:6px;
+ }
+ qty-btn.primary {
+   background: #ff7f32;
+   color: #fff;
+   border: none;
+ }
+ qty-btn.secondary {
+   background: #fff;
+   color: #ff7f32;
+   border: 1px solid #fff;
+ }
+
+/* カート詳細のリストは読みやすく */
+#miniCartDetails ul li {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  padding:6px 0;
 }
 
 /* 小さい画面向け調整：狭い場合は1列に切り替え（極小画面用） */

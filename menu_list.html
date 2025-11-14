@@ -38,16 +38,25 @@
   
   <main id="menuContainer" class="container"></main>
   
-  <!-- 注文ステータス（配膳済み / 未配膳） -->
-  <div id="orderStatus" class="container" style="padding:8px 16px; font-size:14px; color:#333;">
-    配膳済み: <span id="deliveredCount">0</span> 点　/　未配膳: <span id="pendingCount">0</span> 点
-  </div>
-  
   <div id="miniCart">
-    <h2>カート</h2>
-    <ul id="cartItems"></ul>
-    <div id="cartTotal">合計: ¥0</div>
-    <button id="confirmOrder">注文確定</button>
+    <!-- 要約表示（常時）：カート点数・配膳済/未配膳を横並びで表示 -->
+    <div id="miniCartSummary" style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+      <div>
+        カート：<span id="cartCount">0</span> 点
+        <small style="margin-left:8px; color:#666;">配膳済: <span id="deliveredCount">0</span> / 未配膳: <span id="pendingCount">0</span></small>
+      </div>
+      <div>
+        <button id="miniCartToggle" class="secondary" type="button">表示</button>
+      </div>
+    </div>
+
+    <!-- 詳細（初期は非表示） -->
+    <div id="miniCartDetails" hidden style="margin-top:8px;">
+      <h3 style="margin:4px 0;">カートの中身</h3>
+      <ul id="cartItems" style="margin:6px 0; padding-left:16px;"></ul>
+      <div id="cartTotal" style="margin-bottom:8px;">合計: ¥0</div>
+      <button id="confirmOrder" class="primary">注文確定</button>
+    </div>
   </div>
   
   <script src="api.js"></script>

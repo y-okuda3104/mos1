@@ -139,51 +139,143 @@ function loadCart() {
   renderCart();
 }
 
+/* ===== 初期化（UIイベントの確実な登録） ===== */
+function initUI() {
+  // 検索・フィルタ・ソート
+  const si = document.getElementById("searchInput");
+  if (si) si.addEventListener("input", renderMenu);
+  const cf = document.getElementById("categoryFilter");
+  if (cf) cf.addEventListener("change", renderMenu);
+  const so = document.getElementById("sortOrder");
+  if (so) so.addEventListener("change", renderMenu);
+
+  // ミニカートのトグル
+  const cartToggleBtn = document.getElementById('miniCartToggle');
+  if (cartToggleBtn) {
+    cartToggleBtn.addEventListener('click', () => {
+      const details = document.getElementById('miniCartDetails');
+      if (!details) return;
+      const currentlyShown = !details.hidden;
+      details.hidden = currentlyShown;
+      cartToggleBtn.textContent = currentlyShown ? '表示' : '閉じる';
+      renderCart(); // 展開時に詳細を描画
+    });
+  }
+
+  // 注文確定ボタン（存在すれば確実に登録）
+  const confirmBtn = document.getElementById("confirmOrder");
+  if (confirmBtn) {
+    confirmBtn.addEventListener("click", () => {
+      // 注文確定：カート内の商品を orders に移す（未配膳）
+      const now = Date.now();
+      Object.entries(cart).forEach(([id, qty]) => {
+        if (!qty || qty <= 0) return;
+        const item = menuItems.find(i => i.id === id) || { id, name: id, price: 0 };
+        orders.push({ id: item.id, name: item.name, price: item.price, qty, delivered: false, ts: now });
+      });
+      // 保存してUIを更新
+      saveOrders();
+      cart = {};
+      saveCart();
+      // カート詳細は閉じる
+      const details = document.getElementById('miniCartDetails');
+      const toggle = document.getElementById('miniCartToggle');
+      if (details) details.hidden = true;
+      if (toggle) toggle.textContent = '表示';
+      renderCart();
+      renderOrderStatus();
+      showToast('注文を確定しました（未配膳）');
+    });
+  }
+}
+
+// 数量を変更するユーティリティ（+/-）
+// delta は正負の整数
+function changeCartQty(itemId, delta) {
+  const prev = cart[itemId] || 0;
+  const next = Math.max(0, prev + delta);
+  if (next === 0) {
+    delete cart[itemId];
+  } else {
+    cart[itemId] = next;
+  }
+  saveCart();
+  renderCart();
+}
+
+/* ===== renderCart の強化 ===== */
 function renderCart() {
+  // 要約（個数）更新
+  const cartCountEl = document.getElementById('cartCount');
+  let totalItems = 0;
+  Object.values(cart).forEach(q => totalItems += q || 0);
+  if (cartCountEl) cartCountEl.textContent = String(totalItems);
+
+  // 注文ステータス要約も更新（配膳済/未配膳）
+  const delEl = document.getElementById('deliveredCount');
+  const pendEl = document.getElementById('pendingCount');
+  if (delEl && pendEl) {
+    const delivered = orders.reduce((s,o) => s + ((o.delivered) ? o.qty : 0), 0);
+    const pending = orders.reduce((s,o) => s + ((o.delivered) ? 0 : o.qty), 0);
+    delEl.textContent = String(delivered);
+    pendEl.textContent = String(pending);
+  }
+
+  // 詳細リストが開かれている場合は内容を描画（＋/− ボタンを付与）
+  const details = document.getElementById('miniCartDetails');
   const ul = document.getElementById("cartItems");
   const totalDiv = document.getElementById("cartTotal");
+  if (!ul || !totalDiv) return;
   ul.innerHTML = "";
   let total = 0;
   Object.entries(cart).forEach(([id, qty]) => {
-    const item = menuItems.find(i => i.id === id);
-    if (!item) return;
+    const item = menuItems.find(i => i.id === id) || { id, name: id, price: 0 };
     const li = document.createElement("li");
-    li.textContent = `${item.name} x${qty} - ¥${item.price * qty}`;
-    const btn = document.createElement("button");
-    btn.textContent = "削除";
-    btn.onclick = () => removeFromCart(id);
-    li.appendChild(btn);
+
+    // 左：商品名 x 数量
+    const left = document.createElement('div');
+    left.textContent = `${item.name} x${qty}`;
+
+    // 右：操作（− ボタン、＋ ボタン）と金額（optional）
+    const right = document.createElement('div');
+
+    // マイナスボタン
+    const minus = document.createElement('button');
+    minus.className = 'qty-btn secondary';
+    minus.type = 'button';
+    minus.textContent = '−';
+    minus.addEventListener('click', () => {
+      changeCartQty(id, -1);
+    });
+
+    // プラスボタン
+    const plus = document.createElement('button');
+    plus.className = 'qty-btn primary';
+    plus.type = 'button';
+    plus.textContent = '+';
+    plus.addEventListener('click', () => {
+      changeCartQty(id, +1);
+    });
+
+    // 合計金額小表示
+    const priceSpan = document.createElement('span');
+    priceSpan.style.marginLeft = '8px';
+    priceSpan.textContent = `¥${(item.price || 0) * qty}`;
+
+    right.appendChild(minus);
+    right.appendChild(plus);
+    right.appendChild(priceSpan);
+
+    li.appendChild(left);
+    li.appendChild(right);
     ul.appendChild(li);
-    total += item.price * qty;
+
+    total += (item.price || 0) * qty;
   });
   totalDiv.textContent = `合計: ¥${total}`;
 }
 
-// イベント登録（要素が存在するかチェック）
-const si = document.getElementById("searchInput");
-if (si) si.addEventListener("input", renderMenu);
-const cf = document.getElementById("categoryFilter");
-if (cf) cf.addEventListener("change", renderMenu);
-const so = document.getElementById("sortOrder");
-if (so) so.addEventListener("change", renderMenu);
-const confirmBtn = document.getElementById("confirmOrder");
-if (confirmBtn) confirmBtn.addEventListener("click", () => {
-  // 注文確定：カート内の商品をordersに移す（未配膳）
-  const now = Date.now();
-  Object.entries(cart).forEach(([id, qty]) => {
-    const item = menuItems.find(i => i.id === id) || { id, name: id, price: 0 };
-    orders.push({ id: item.id, name: item.name, price: item.price, qty, delivered: false, ts: now });
-  });
-  // 保存してUIを更新
-  saveOrders();
-  cart = {};
-  saveCart();
-  renderCart();
-  renderOrderStatus();
-  showToast('注文を確定しました（未配膳）');
-});
-
-// 注文ステータス描画
+/* ===== renderOrderStatus の再利用（UI反映を確実に） ===== */
 function renderOrderStatus() {
   const delEl = document.getElementById('deliveredCount');
   const pendEl = document.getElementById('pendingCount');
@@ -194,10 +286,19 @@ function renderOrderStatus() {
   pendEl.textContent = String(pending);
 }
 
-// 初期ロード
+/* ===== 初期ロード ===== */
+// menuItems / cart / orders を読み込んでから UI 初期化・描画
 loadMenu();
 loadCart();
 loadOrders();
+initUI();
+renderCart();
+renderOrderStatus();
+
+// 時刻表示の補強（top_menu.js の startClock が読み込まれている場合に呼び出す）
+if (typeof startClock === 'function') {
+  try { startClock(); } catch (e) { /* ignore */ }
+}
 
 // expose helpers in console for manual testing: mark delivered
 window.__orders = orders;
