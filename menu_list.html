@@ -2,6 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>メニュー一覧 - 居酒屋みどり亭</title>
   <link rel="stylesheet" href="menu_list.css">
 </head>
@@ -37,17 +38,28 @@
   </section>
   
   <main id="menuContainer" class="container"></main>
+  <!-- ページネーション（6件/ページ） -->
+  <div class="pagination container" aria-hidden="false">
+    <button id="prevPage" type="button">前へ</button>
+    <span id="pageInfo">1 / 2</span>
+    <button id="nextPage" type="button">次へ</button>
+  </div>
   
   <div id="miniCart">
     <h2>カート</h2>
     <ul id="cartItems"></ul>
     <div id="cartTotal">合計: ¥0</div>
-    <button id="confirmOrder">注文確認へ</button>
+    <!-- 注文サマリ：配膳済み／未配膳 -->
+    <div id="orderSummary" class="order-summary">
+      <span id="servedCount">配膳済み: 0</span>
+      <span id="pendingCount">未配膳: 0</span>
+    </div>
+    <button id="confirmOrder">注文確定</button>
   </div>
   
   <script src="api.js"></script>
-  <script src="menu_list.js"></script>
-  <!-- トップのスクリプトと共通のヘッダー要素操作が必要なら top_menu.js を追加で読み込み（必要に応じて） -->
+  <script src="menu_list.js" defer></script>
+  <!-- top_menu.js はヘッダー表示（時刻やseatLabel）を制御するため読み込む -->
   <script src="top_menu.js" defer></script>
 </body>
 </html>
