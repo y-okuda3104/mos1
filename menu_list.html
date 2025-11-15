@@ -1,52 +1,59 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>メニュー一覧 - みどり亭</title>
-  menu_list.css
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+	<title>メニュー一覧 - みどり亭</title>
+	<link rel="stylesheet" href="menu_list.css" />
 </head>
 <body>
-  <header class="app-header">
-    <div class="header-inner">
-      <div class="header-left">
-        <h1 id="storeName">みどり亭 ○○店</h1>
-        <div class="status">
-          <span id="seatLabel">席：未設定</span>
-          <span id="loLabel">ラストオーダーまで：計算中...</span>
-          <a href="top_menu.html" class="top-link    </div>
-      <div class="header-right">
-        <div id="currentTime" class="current-time">--:--:--</div>
-      </div>
-    </div>
-  </header>
+	<header class="app-header">
+		<div class="header-inner">
+			<div class="header-left">
+				<h1 id="storeName">みどり亭 ○○店</h1>
+				<div class="status">
+					<span id="seatLabel" aria-live="polite">席：未設定</span>
+					<span id="loLabel" aria-live="polite">ラストオーダーまで：計算中...</span>
+				</div>
+			</div>
+			<div class="header-right">
+				<a href="top_menu.html" class="top-link" aria-label="トップメニューへ戻る">TOPへ</a>
+				<div id="currentTime" class="current-time" aria-live="polite">--:--:--</div>
+			</div>
+		</div>
+	</header>
 
-  <main class="container">
-    <div class="search-bar">
-      <input type="text" id="searchInput" placeholder="メニュー検索" />
-      <select id="categoryFilter"></select>
-      <select id="sortOrder">
-        <option value="recommend">おすすめ順</option>
-        <option value="category">カテゴリ順</option>
-        <option value="quick">クイック順</option>
-      </select>
-    </div>
+	<main class="container">
+		<section class="search-bar">
+			<input type="text" id="searchInput" placeholder="メニュー検索" />
+			<select id="categoryFilter">
+				<option value="">すべてのカテゴリ</option>
+			</select>
+			<select id="sortOrder">
+				<option value="recommend">おすすめ順</option>
+				<option value="category">カテゴリ順</option>
+				<option value="quick">クイック順</option>
+			</select>
+		</section>
 
-    <section id="menuContainer"></section>
-  </main>
+		<section id="menuContainer" class="container"></section>
+	</main>
 
-  <div id="miniCart">
-    <div style="display:flex;justify-content:space-between;align-items:center;">
-      <span>カート：<span id="cartCount">0</span>点 配膳済:<span id="deliveredCount">0</span> / 未配膳:<span id="pendingCount">0</span></span>
-      <button id="miniCartToggle" class="secondary">表示</button>
-    </div>
-    <div id="miniCartDetails" hidden>
-      <ul id="cartItems"></ul>
-      <div id="cartTotal">合計: ¥0</div>
-      <button id="confirmOrder" class="primary" style="width:100%;margin-top:8px;">注文確定</button>
-    </div>
-  </div>
+	<div id="miniCart">
+		<div style="display:flex;justify-content:space-between;align-items:center;">
+			<span>カート：<span id="cartCount">0</span>点　<small style="color:#666">配膳済:<span id="deliveredCount">0</span> / 未配膳:<span id="pendingCount">0</span></small></span>
+			<button id="miniCartToggle" class="secondary" type="button">表示</button>
+		</div>
+		<div id="miniCartDetails" hidden>
+			<ul id="cartItems"></ul>
+			<div id="cartTotal">合計: ¥0</div>
+			<button id="confirmOrder" class="primary" style="width:100%;margin-top:8px;">注文確定</button>
+		</div>
+	</div>
 
-  menu_list.js</script>
+	<!-- スクリプトは末尾で読み込み（defer 相当の順序確保） -->
+	<script src="api.js"></script>
+	<script src="menu_list.js" defer></script>
+	<script src="top_menu.js" defer></script>
 </body>
 </html>
