@@ -19,7 +19,6 @@ body {
 }
 .header-left{ display:flex; flex-direction:column; gap:6px; }
 .header-right{ display:flex; align-items:center; }
-.header-right { gap: 20px; } /* TOPへと時刻を離す */
 .app-header h1 { margin: 0 0 4px; font-size:20px; font-weight:700; }
 .current-time{ font-size:14px; background:rgba(255,255,255,0.12); padding:6px 10px; border-radius:8px; }
 .status {
@@ -102,20 +101,6 @@ body {
   cursor: pointer;
 }
 .primary:active { transform: translateY(1px); }
-.primary:hover { background: #ff8f45; }
-
-/* small buttons for cart qty adjustment */
-.qty-btn {
-  background: #ff7f32;
-  color: #fff;
-  border: none;
-  padding: 4px 8px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 12px;
-}
-.qty-btn:hover { background: #ff8f45; }
- qty-btn:active { transform: translateY(1px); }
 
 /* ミニカート */
 #miniCart {
@@ -125,14 +110,71 @@ body {
   right: 0;
   background: #fff;
   border-top: 2px solid #ccc;
-  padding: 10px 16px;
+  padding: 12px 16px;
   box-shadow: 0 -4px 12px rgba(0,0,0,0.06);
   z-index: 1000;
+  max-height: 80vh;
+  overflow-y: auto;
 }
 
-/* 小さい画面向け調整：狭い場合は1列に切り替え（極小画面用） */
+/* 要約表示（常時表示、大きく） */
+#miniCartSummary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* 詳細表示（展開時） */
+#miniCartDetails {
+  margin-top: 12px;
+}
+
+#miniCartDetails h3 {
+  margin: 8px 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+#miniCartDetails ul {
+  margin: 8px 0;
+  padding-left: 0;
+  list-style: none;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+#miniCartDetails li {
+  /* li 内部で flexbox 制御されている */
+}
+
+#cartTotal {
+  margin-bottom: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  text-align: right;
+}
+
+/* 小さい画面向け：グリッドを1列に */
 @media (max-width:420px) {
   #menuContainer { grid-template-columns: 1fr; }
   .menuItem img { height:120px; }
   .search-bar { padding:10px; }
+  
+  /* スマホ時：ミニカート UI をさらに大きく */
+  #miniCartSummary {
+    font-size: 18px;
+  }
+  #miniCartDetails h3 {
+    font-size: 18px;
+  }
+  #cartTotal {
+    font-size: 18px;
+  }
+  .primary {
+    padding: 8px 12px;
+    font-size: 14px;
+  }
 }

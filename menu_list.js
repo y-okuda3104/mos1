@@ -1,8 +1,26 @@
+/**
+ * メニュー一覧ページ（menu_list.html）のロジック
+ * 
+ * 機能：
+ * - ダミーメニュー12品を表示（API未応答時のフォールバック）
+ * - 検索・カテゴリ絞込・ソート機能
+ * - カート管理（localStorage に seat 単位で保存）
+ * - 注文確定機能（orders に遷移して未配膳としてカウント）
+ * - 配膳状態の表示（配膳済み / 未配膳）
+ * 
+ * 座席がトップメニューで「英字1文字-2桁」形式（例 C-05）で設定され、
+ * localStorage['seatId'] に保存されることを前提としています。
+ */
+
 const storeId = "001"; // 仮の店舗ID
 let menuItems = [];
-let cart = {};
+let cart = {}; // { itemId: quantity, ... }
 let seatId = localStorage.getItem("seatId") || "C-01";
 
+/**
+ * 座席ID正規化関数
+ * 入力値を「英字1文字-2桁」形式に統一（C-05 など）
+ */
 function normalizeSeatId(input) {
   if (!input) return null;
   const s = String(input).trim().toUpperCase();
@@ -13,14 +31,17 @@ function normalizeSeatId(input) {
 seatId = normalizeSeatId(seatId);
 const cartKey = `cart_${seatId}`;
 
-// ダミーメニュー（API未応答時のフォールバック、12品）
+/**
+ * ダミーメニュー生成（API未応答時のフォールバック用、12品）
+ * 画像 URL は空に設定（プレースホルダー表示を避けるため）
+ */
 const DUMMY_MENU = Array.from({length:12}, (_,i) => {
   const idx = i + 1;
   return {
     id: `m${String(idx).padStart(2,'0')}`,
     name: `居酒屋メニュー ${idx}`,
     price: (idx % 5 === 0) ? 0 : 500 + (idx * 50),
-    imageUrl: `https://via.placeholder.com/400x300/ff7f32/ffffff?text=Dish+${idx}`,
+    imageUrl: '', // 画像なし（URL を空に）
     category: (idx % 3 === 0) ? '酒肴' : (idx % 3 === 1) ? '串焼き' : '揚げ物',
     recommend: Math.floor(Math.random()*100),
     quickOrder: Math.floor(Math.random()*10),
@@ -28,7 +49,10 @@ const DUMMY_MENU = Array.from({length:12}, (_,i) => {
   };
 });
 
-// orders を seat 単位で保存（配膳ステータスを持つ）
+/**
+ * 注文管理オブジェクト
+ * orders は { id, name, price, qty, delivered, ts } の配列
+ */
 let orders = [];
 const ordersKeyBase = 'orders_';
 
@@ -36,21 +60,30 @@ function getOrdersKey() {
   return ordersKeyBase + (seatId || 'unknown');
 }
 
+/**
+ * localStorage から注文履歴を読み込む
+ */
 function loadOrders() {
   try {
     const raw = localStorage.getItem(getOrdersKey());
     orders = raw ? JSON.parse(raw) : [];
   } catch (e) {
+    console.error('Failed to load orders:', e);
     orders = [];
   }
   renderOrderStatus();
 }
 
+/**
+ * 注文履歴を localStorage に保存
+ */
 function saveOrders() {
   localStorage.setItem(getOrdersKey(), JSON.stringify(orders));
 }
 
-// API のフォールバック対応：空やエラーの場合は DUMMY_MENU を使う
+/**
+ * メニューを読み込む（API or ダミー）
+ */
 function loadMenu() {
   fetch(`/api/menu?storeId=${storeId}`)
     .then(res => res.json())
@@ -60,15 +93,22 @@ function loadMenu() {
       populateCategories();
     })
     .catch(() => {
-      // フォールバック
+      // フォールバック：API 応答なしの場合
+      console.warn('Menu API unavailable, using dummy menu');
       menuItems = DUMMY_MENU;
       renderMenu();
       populateCategories();
     });
 }
 
+/**
+ * メニューを画面に描画
+ * 検索・カテゴリ・ソート条件を適用してフィルタリング
+ */
 function renderMenu() {
   const container = document.getElementById("menuContainer");
+  if (!container) return;
+
   const keywordEl = document.getElementById("searchInput");
   const categoryEl = document.getElementById("categoryFilter");
   const sortEl = document.getElementById("sortOrder");
@@ -76,11 +116,13 @@ function renderMenu() {
   const category = categoryEl ? categoryEl.value : '';
   const sort = sortEl ? sortEl.value : 'recommend';
 
+  // フィルタリング
   let filtered = menuItems.filter(item => {
     return (!category || item.category === category) &&
            (!keyword || item.name.toLowerCase().includes(keyword));
   });
 
+  // ソート
   if (sort === "recommend") filtered.sort((a, b) => b.recommend - a.recommend);
   if (sort === "category") filtered.sort((a, b) => a.category.localeCompare(b.category));
   if (sort === "quick") filtered.sort((a, b) => a.quickOrder - b.quickOrder);
@@ -89,14 +131,19 @@ function renderMenu() {
   filtered.forEach(item => {
     const div = document.createElement("div");
     div.className = "menuItem" + (item.soldOut ? " soldOut" : "");
+    
+    // 画像表示は URL が存在する場合のみ
+    const imgHtml = item.imageUrl ? `<img src="${item.imageUrl}" alt="${item.name}">` : '';
+    
     div.innerHTML = `
-      <img src="${item.imageUrl}" alt="${item.name}">
+      ${imgHtml}
       <div class="name">${item.name}</div>
       <div class="price">${item.price === 0 ? "¥0（無料）" : `¥${item.price}`}</div>
       <button ${item.soldOut ? "disabled" : ""} data-id="${item.id}">${item.soldOut ? '売切' : '追加'}</button>
     `;
     container.appendChild(div);
-    // 安全にボタンイベントを割り当て（onclick属性回避）
+
+    // ボタンイベント登録（安全なデータ属性使用）
     const btn = div.querySelector('button[data-id]');
     if (btn && !item.soldOut) {
       btn.addEventListener('click', () => addToCart(item.id));
@@ -104,6 +151,9 @@ function renderMenu() {
   });
 }
 
+/**
+ * カテゴリ選択肢を動的に生成
+ */
 function populateCategories() {
   const select = document.getElementById("categoryFilter");
   if (!select) return;
@@ -117,165 +167,276 @@ function populateCategories() {
   });
 }
 
+/**
+ * カートに商品を追加
+ */
 function addToCart(itemId) {
   cart[itemId] = (cart[itemId] || 0) + 1;
   saveCart();
   renderCart();
 }
 
+/**
+ * カートから商品を削除
+ */
 function removeFromCart(itemId) {
   delete cart[itemId];
   saveCart();
   renderCart();
 }
 
+/**
+ * カートの数量を増やす
+ */
+function increaseCart(itemId) {
+  cart[itemId] = (cart[itemId] || 0) + 1;
+  saveCart();
+  renderCart();
+}
+
+/**
+ * カートの数量を減らす
+ */
+function decreaseCart(itemId) {
+  if (!cart[itemId] || cart[itemId] <= 1) {
+    removeFromCart(itemId);
+  } else {
+    cart[itemId]--;
+    saveCart();
+    renderCart();
+  }
+}
+
+/**
+ * カートを localStorage に保存
+ */
 function saveCart() {
   localStorage.setItem(cartKey, JSON.stringify(cart));
 }
 
+/**
+ * localStorage からカートを読み込む
+ */
 function loadCart() {
   const saved = localStorage.getItem(cartKey);
   cart = saved ? JSON.parse(saved) : {};
   renderCart();
 }
 
+/**
+ * カート UI を描画・更新
+ * - 要約（点数表示）を常時表示
+ * - 詳細（リスト・合計・プラマイボタン）は初期非表示
+ */
 function renderCart() {
-  // 要約（個数）更新
+  // 要約：カート内の総点数を計算
   const cartCountEl = document.getElementById('cartCount');
   let totalItems = 0;
-  Object.values(cart).forEach(q => totalItems += q || 0);
+  Object.values(cart).forEach(q => totalItems += (q || 0));
   if (cartCountEl) cartCountEl.textContent = String(totalItems);
 
-  // 詳細リストが開かれている場合は内容を描画
-  const details = document.getElementById('miniCartDetails');
+  // 詳細リスト描画
   const ul = document.getElementById("cartItems");
   const totalDiv = document.getElementById("cartTotal");
   if (!ul || !totalDiv) return;
+
   ul.innerHTML = "";
   let total = 0;
   Object.entries(cart).forEach(([id, qty]) => {
     const item = menuItems.find(i => i.id === id);
     if (!item) return;
+
+    // リスト行を作成
     const li = document.createElement("li");
-    // 商品名、数量、+/-ボタン表示
-    li.innerHTML = `
-      <span>${item.name} x${qty}</span>
-      <button class="qty-btn" data-id="${id}" data-action="dec">−</button>
-      <button class="qty-btn" data-id="${id}" data-action="inc">+</button>
-    `;
+    li.style.display = 'flex';
+    li.style.alignItems = 'center';
+    li.style.justifyContent = 'space-between';
+    li.style.marginBottom = '8px';
+    li.style.padding = '8px';
+    li.style.background = '#f5f5f5';
+    li.style.borderRadius = '6px';
+
+    // 商品名と数量
+    const nameQty = document.createElement('span');
+    nameQty.textContent = `${item.name} `;
+    const nameQtyStrong = document.createElement('strong');
+    nameQtyStrong.textContent = `x${qty}`;
+    nameQty.appendChild(nameQtyStrong);
+
+    // プラマイボタンコンテナ
+    const btnContainer = document.createElement('div');
+    btnContainer.style.display = 'flex';
+    btnContainer.style.gap = '4px';
+    btnContainer.style.alignItems = 'center';
+
+    // マイナスボタン
+    const minusBtn = document.createElement('button');
+    minusBtn.textContent = '−';
+    minusBtn.className = 'primary';
+    minusBtn.style.padding = '4px 8px';
+    minusBtn.style.fontSize = '14px';
+    minusBtn.style.minWidth = '32px';
+    minusBtn.addEventListener('click', () => decreaseCart(id));
+
+    // プラスボタン
+    const plusBtn = document.createElement('button');
+    plusBtn.textContent = '+';
+    plusBtn.className = 'primary';
+    plusBtn.style.padding = '4px 8px';
+    plusBtn.style.fontSize = '14px';
+    plusBtn.style.minWidth = '32px';
+    plusBtn.addEventListener('click', () => increaseCart(id));
+
+    btnContainer.appendChild(minusBtn);
+    btnContainer.appendChild(plusBtn);
+
+    li.appendChild(nameQty);
+    li.appendChild(btnContainer);
     ul.appendChild(li);
-    // イベントリスナーを追加
-    const decBtn = li.querySelector('button[data-action="dec"]');
-    const incBtn = li.querySelector('button[data-action="inc"]');
-    if (decBtn) decBtn.addEventListener('click', () => {
-      if (cart[id] > 1) {
-        cart[id]--;
-      } else {
-        delete cart[id];
-      }
-      saveCart();
-      renderCart();
-    });
-    if (incBtn) incBtn.addEventListener('click', () => {
-      cart[id]++;
-      saveCart();
-      renderCart();
-    });
+
     total += (item.price || 0) * qty;
   });
   totalDiv.textContent = `合計: ¥${total}`;
-
-  // 詳細が非表示なら中身は空にしてもよい（上で描画済み）
-  if (details && details.hidden) {
-    // do nothing (summary already updated)
-  }
 }
 
-// ミニカートのトグル処理
+/**
+ * 注文ステータス表示を更新
+ * 配膳済み / 未配膳の点数を集計して表示
+ */
+function renderOrderStatus() {
+  const delEl = document.getElementById('deliveredCount');
+  const pendEl = document.getElementById('pendingCount');
+  if (!delEl || !pendEl) return;
+
+  // orders から配膳状態別に集計
+  let delivered = 0;
+  let pending = 0;
+  orders.forEach(o => {
+    if (o.delivered) {
+      delivered += (o.qty || 0);
+    } else {
+      pending += (o.qty || 0);
+    }
+  });
+
+  delEl.textContent = String(delivered);
+  pendEl.textContent = String(pending);
+}
+
+/**
+ * カート表示トグルボタンのイベント処理
+ */
 const cartToggleBtn = document.getElementById('miniCartToggle');
 if (cartToggleBtn) {
   cartToggleBtn.addEventListener('click', () => {
     const details = document.getElementById('miniCartDetails');
     if (!details) return;
-    const shown = !details.hidden;
-    details.hidden = shown;
-    cartToggleBtn.textContent = shown ? '表示' : '閉じる';
-    // render in case contents changed
-    renderCart();
+    const isHidden = details.hidden;
+    details.hidden = !isHidden;
+    cartToggleBtn.textContent = isHidden ? '閉じる' : '表示';
+    // 詳細開時に内容を更新
+    if (!details.hidden) {
+      renderCart();
+    }
   });
 }
 
-// 注文確定ボタンイベントは既存の confirmOrder ハンドラで処理しているためそのまま使う。
-// （既に confirmBtn のイベント登録が行われています）
+/**
+ * 注文確定ボタンのイベント処理
+ * カート内の商品を orders に移して未配膳としてカウント
+ */
 const confirmBtn = document.getElementById('confirmOrder');
-if (confirmBtn) confirmBtn.addEventListener('click', () => {
-  // 注文確定：カート内の商品をordersに移す（未配膳）
-  if (Object.keys(cart).length === 0) {
-    showToast('カートが空です');
-    return;
-  }
-  const now = Date.now();
-  Object.entries(cart).forEach(([id, qty]) => {
-    const item = menuItems.find(i => i.id === id) || { id, name: id, price: 0 };
-    orders.push({ id: item.id, name: item.name, price: item.price, qty, delivered: false, ts: now });
-  });
-  // 保存してUIを更新
-  saveOrders();
-  cart = {};
-  saveCart();
-  renderCart();
-  renderOrderStatus();
-  showToast('注文を確定しました');
-  // カート詳細を非表示に
-  const details = document.getElementById('miniCartDetails');
-  if (details) details.hidden = true;
-  const toggle = document.getElementById('miniCartToggle');
-  if (toggle) toggle.textContent = '表示';
-});
+if (confirmBtn) {
+  confirmBtn.addEventListener('click', () => {
+    // カートが空の場合は何もしない
+    if (Object.keys(cart).length === 0) {
+      showToast('カートが空です');
+      return;
+    }
 
-// 注文ステータス描画
-function renderOrderStatus() {
-  const delEl = document.getElementById('deliveredCount');
-  const pendEl = document.getElementById('pendingCount');
-  if (!delEl || !pendEl) return;
-  const delivered = orders.reduce((s,o) => s + ((o.delivered) ? o.qty : 0), 0);
-  const pending = orders.reduce((s,o) => s + ((o.delivered) ? 0 : o.qty), 0);
-  delEl.textContent = String(delivered);
-  pendEl.textContent = String(pending);
+    // 各商品を orders に追加（未配膳フラグを false で）
+    const now = Date.now();
+    Object.entries(cart).forEach(([id, qty]) => {
+      const item = menuItems.find(i => i.id === id) || { id, name: id, price: 0 };
+      orders.push({
+        id: item.id,
+        name: item.name,
+        price: item.price || 0,
+        qty: qty || 0,
+        delivered: false,
+        ts: now
+      });
+    });
+
+    // 保存して UI を更新
+    saveOrders();
+    renderOrderStatus(); // 注文ステータスを先に更新
+    cart = {};
+    saveCart();
+    renderCart();
+
+    // トグルを閉じる
+    const details = document.getElementById('miniCartDetails');
+    if (details) {
+      details.hidden = true;
+      cartToggleBtn.textContent = '表示';
+    }
+
+    if (typeof showToast === 'function') {
+      showToast('注文を確定しました');
+    }
+  });
 }
 
-// 初期ロード
+/**
+ * イベント登録（要素が存在するかチェック）
+ */
+const si = document.getElementById("searchInput");
+if (si) si.addEventListener("input", renderMenu);
+const cf = document.getElementById("categoryFilter");
+if (cf) cf.addEventListener("change", renderMenu);
+const so = document.getElementById("sortOrder");
+if (so) so.addEventListener("change", renderMenu);
+
+/**
+ * 初期ロード処理
+ */
 loadMenu();
 loadCart();
 loadOrders();
 
-// 時刻表示の補強：DOMContentLoaded後に明示的に呼び出す
-document.addEventListener('DOMContentLoaded', () => {
-  if (typeof startClock === 'function') {
-    try { startClock(); } catch (e) { /* ignore */ }
+/**
+ * 時刻表示の確保
+ * top_menu.js の startClock が読み込まれている場合に呼び出す
+ */
+if (typeof startClock === 'function') {
+  try {
+    startClock();
+  } catch (e) {
+    console.warn('startClock failed:', e);
   }
-});
+}
 
-// タイムアウトフォールバック（top_menu.js が読み込まれていない場合に手動実装）
-setTimeout(() => {
-  if (typeof startClock === 'undefined') {
-    const el = document.getElementById('currentTime');
-    if (el) {
-      const fmt = (n) => String(n).padStart(2, '0');
-      const tick = () => {
-        const d = new Date();
-        el.textContent = `${fmt(d.getHours())}:${fmt(d.getMinutes())}:${fmt(d.getSeconds())}`;
-      };
-      tick();
-      setInterval(tick, 1000);
+/**
+ * showToast 関数が top_menu.js から読み込まれない場合の代替実装
+ */
+if (typeof showToast === 'undefined') {
+  window.showToast = (message) => {
+    const toast = document.getElementById('toast');
+    if (!toast) {
+      console.log('[Toast]', message);
+      return;
     }
-  }
-}, 100);
+    toast.textContent = message;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 3000);
+  };
+}
 
-// expose helpers in console for manual testing: mark delivered
-window.__orders = orders;
+/**
+ * デバッグ用ユーティリティ：配膳済みに手動で変更
+ */
 window.markDelivered = (id) => {
-  // マニュアルで特定注文を配膳済みにするユーティリティ（デバッグ用）
   orders = orders.map(o => o.id === id ? ({...o, delivered: true}) : o);
   saveOrders();
   renderOrderStatus();

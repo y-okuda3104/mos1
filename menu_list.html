@@ -38,25 +38,29 @@
   
   <main id="menuContainer" class="container"></main>
   
-  <!-- 注文ステータスはカート要約内に統合 -->
-   
-   <div id="miniCart">
+  <div id="miniCart">
     <!-- 要約表示（常時） -->
-    <div id="miniCartSummary" style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
-      <div>カート：<span id="cartCount">0</span> 点　/　配膳済み：<span id="deliveredCount">0</span> 点　未配膳：<span id="pendingCount">0</span> 点</div>
-       <div>
-         <button id="miniCartToggle" class="secondary" type="button">表示</button>
-       </div>
-     </div>
+    <div id="miniCartSummary" style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+      <!-- カート点数と注文ステータスを一行で表示 -->
+      <div style="display:flex; align-items:center; gap:16px; font-size:16px;">
+        <span>カート：<strong id="cartCount">0</strong> 点</span>
+        <span style="color:#666; font-size:14px;">
+          配膳済み: <span id="deliveredCount">0</span> 点　/　未配膳: <span id="pendingCount">0</span> 点
+        </span>
+      </div>
+      <div>
+        <button id="miniCartToggle" class="secondary" type="button">表示</button>
+      </div>
+    </div>
 
-     <!-- 詳細（初期は非表示） -->
-     <div id="miniCartDetails" hidden style="margin-top:8px;">
-       <h3 style="margin:4px 0;">カートの中身</h3>
-       <ul id="cartItems" style="margin:6px 0; padding-left:16px;"></ul>
-       <div id="cartTotal" style="margin-bottom:8px;">合計: ¥0</div>
-       <button id="confirmOrder" class="primary">注文確定</button>
-     </div>
-   </div>
+    <!-- 詳細（初期は非表示） -->
+    <div id="miniCartDetails" hidden style="margin-top:8px;">
+      <h3 style="margin:4px 0;">カートの中身</h3>
+      <ul id="cartItems" style="margin:6px 0; padding-left:0;"></ul>
+      <div id="cartTotal" style="margin-bottom:8px;">合計: ¥0</div>
+      <button id="confirmOrder" class="primary">注文確定</button>
+    </div>
+  </div>
   
   <script src="api.js"></script>
   <script src="menu_list.js"></script>
