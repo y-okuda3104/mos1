@@ -160,157 +160,31 @@ body {
   text-align: right;
 }
 
-/* 小さい画面向け調整：狭い場合は UI を拡大 */
-@media (max-width: 480px) {
-  body {
-    padding-bottom: 150px; /* ミニカート領域用を大きめに */
-  }
-
-  /* ヘッダー調整 */
-  .app-header {
-    padding: 14px 14px;
-  }
-  .header-inner {
-    gap: 10px;
-  }
-  .app-header h1 {
-    font-size: 18px;
-    margin: 0 0 6px;
-  }
-  .status {
-    gap: 6px;
-  }
-  .header-right {
-    flex-direction: column;
-    gap: 10px;
-  }
-  .current-time {
-    font-size: 16px;
-    padding: 8px 12px;
-  }
-  .top-link {
-    font-size: 14px;
-    padding: 10px 12px;
-  }
-
-  /* 検索バー */
-  .search-bar {
-    padding: 12px 14px 0 14px;
-    gap: 10px;
-    flex-direction: column;
-  }
-  .search-bar input[type="text"],
-  .search-bar select {
-    width: 100%;
-    padding: 12px 14px;
-    min-height: 48px;
-    font-size: 18px; /* スマホは 16px 以上推奨（自動ズーム防止） */
-    border-radius: 8px;
-  }
-
-  /* メニューグリッド */
-  #menuContainer {
-    grid-template-columns: 1fr; /* スマホは1列 */
-    gap: 14px;
-    padding: 10px 14px 50px 14px;
-  }
-  .menuItem {
-    min-height: 240px;
-    padding: 14px;
-    gap: 10px;
-  }
-  .menuItem img {
-    height: 150px;
-  }
-  .menuItem .name {
-    font-size: 18px;
-    font-weight: 700;
-  }
-  .menuItem .price {
-    font-size: 16px;
-    font-weight: 600;
-  }
-  .menuItem button {
-    padding: 14px 16px;
-    min-height: 48px;
-    font-size: 18px;
-  }
-
-  /* 注文ステータス */
-  #orderStatus {
-    padding: 12px 14px;
-    font-size: 16px;
-  }
-
-  /* ミニカート */
-  #miniCart {
-    padding: 14px 16px;
-    max-height: 70vh;
-  }
+/* 小さい画面向け：グリッドを1列に */
+@media (max-width:420px) {
+  #menuContainer { grid-template-columns: 1fr; }
+  .menuItem img { height:120px; }
+  .search-bar { padding:10px; }
+  
+  /* スマホ時：ミニカート UI をさらに大きく */
   #miniCartSummary {
     font-size: 18px;
-    gap: 16px;
-    flex-direction: column;
-  }
-  #miniCartSummary > div {
-    width: 100%;
-  }
-  #miniCartSummary > div:first-child {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-  #miniCartSummary > div:last-child {
-    display: flex;
-    justify-content: flex-end;
-  }
-  .secondary {
-    min-height: 48px;
-    font-size: 18px;
-    padding: 12px 20px;
-  }
-
-  /* 詳細表示 */
-  #miniCartDetails {
-    margin-top: 14px;
   }
   #miniCartDetails h3 {
     font-size: 18px;
-    margin: 10px 0;
-  }
-  #miniCartDetails ul {
-    max-height: 400px;
-  }
-  .cart-line {
-    padding: 12px !important;
-    margin-bottom: 10px !important;
-    background: #f5f5f5 !important;
-    border-radius: 8px !important;
   }
   #cartTotal {
     font-size: 18px;
-    margin-bottom: 14px;
-    font-weight: 700;
   }
-  #confirmOrder.primary {
-    width: 100%;
-    min-height: 50px;
-    font-size: 18px;
-    padding: 14px 18px;
-  }
-
-  /* プラマイボタン（JS で生成される） */
   .primary {
-    min-height: 48px;
-    min-width: 48px;
-    padding: 12px 14px;
+    padding: 12px 16px;
     font-size: 18px;
+    min-height: 48px; /* 若干大きめに */
   }
-}
-
-/* タブレット向け調整（中程度の画面） */
-@media (max-width: 768px) and (min-width: 481px) {
-  #menuContainer {
-    grid-template-columns: repeat(2, 1fr); /* タブレットは2列維持 */
+  /* プラマイ等小さめボタンが JS により生成されるため、ここで一般的なボタンサイズを確保 */
+  button {
+    min-height: 44px;
+    min-width: 44px;
+    font-size: 18px;
   }
 }

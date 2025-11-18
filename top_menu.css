@@ -1,10 +1,12 @@
 /* ========== Base ========== */
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
+/* 基本文字サイズを最低16pxに設定（読みやすさ確保） */
 body {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans JP", Meiryo, sans-serif;
   background: #fff8f0;
   color: #333;
+  font-size: 16px;
 }
 
 /* ========== Header ========== */
@@ -25,9 +27,7 @@ body {
 }
 .secondary {
   background: #fff; color: #ff7f32; border: 1px solid #fff;
-  padding: 10px 14px; border-radius: 6px; cursor: pointer; text-align: center;
-  min-height: 44px;
-  font-size: 16px;
+  padding: 8px 12px; border-radius: 6px; cursor: pointer; text-align: center;
 }
 
 /* ========== Main ========== */
@@ -40,21 +40,11 @@ body {
 .card {
   display: block;
   background: #fff; border: 1px solid #eee; border-radius: 10px;
-  padding: 18px; text-decoration: none; color: inherit;
+  padding: 16px; text-decoration: none; color: inherit;
   box-shadow: 0 1px 3px rgba(0,0,0,0.08);
   cursor: pointer; text-align: center;
-  min-height: 56px; /* 高さを確保して指で押しやすく */
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  gap:8px;
+  box-sizing: border-box;
 }
-.card__icon { font-size: 28px; margin-bottom: 4px; }
-.card__title { margin: 6px 0; font-size: 18px; }
-.card__desc { margin: 0; color: #666; font-size: 13px; }
-
-.card:hover { border-color: #ff7f32; box-shadow: 0 2px 6px rgba(255,127,50,0.18); }
 
 /* ========== Toast ========== */
 .toast {
@@ -62,12 +52,7 @@ body {
   bottom: 16px; background: #333; color: #fff;
   padding: 10px 14px; border-radius: 6px; display: none; z-index: 9999;
 }
-/* 表示時は flex にしてアイテムを整列 */
-.toast.show { 
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
+.toast.show { display: flex; align-items: center; gap: 10px; }
 
 /* ========== Modal ========== */
 .modal { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 10000; }
@@ -86,10 +71,39 @@ body {
 /* 追加：視覚的に隠すがスクリーンリーダーには見えるラベル */
 .visually-hidden { position: absolute !important; height: 1px; width: 1px; overflow: hidden; clip: rect(1px, 1px, 1px, 1px); white-space: nowrap; }
 
+/* ========== Accessibility / Tap targets ========== */
+/* ボタン等のタップ領域を確保（48px以上） */
+button, .primary, .secondary, .card {
+  min-height: 48px;
+  padding: 12px 14px;
+  font-size: 16px; /* 本文の最低サイズを満たす */
+}
+
+/* ========== Responsive: mobile 1-column (max-width: 768px) ========== */
+@media (max-width: 768px) {
+  /* グリッドを1列にしてカードを縦一列にする */
+  .grid, #menuContainer { 
+    display: block;
+  }
+  .card, .menuItem {
+    width: 100%;
+    margin-bottom: 12px;
+    box-sizing: border-box;
+  }
+  /* ヘッダー内の右側と文字サイズ調整（時間と TOP ボタンの干渉回避） */
+  .header-inner { flex-direction: row; align-items: flex-start; }
+  .header-right { display:flex; flex-direction: column; align-items: flex-end; gap:6px; }
+  .status { flex-direction: column; align-items: flex-start; gap:6px; }
+  .app-header h1 { font-size: 18px; }
+  .current-time { font-size: 16px; padding:8px 12px; }
+  /* ボタンの扱いやすさ（大きめ） */
+  .primary, .secondary { min-height: 48px; padding: 12px 14px; font-size: 16px; }
+  .card { padding: 14px; font-size: 16px; }
+}
+
 /* 無効状態の見た目（クールダウン時など） */
 .card[disabled], .primary[disabled], .secondary[disabled] {
   opacity: 0.6;
   cursor: not-allowed;
   pointer-events: none;
-  min-height:44px;
 }

@@ -2,10 +2,12 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
+  <!-- 明示的な viewport（iOS Safari の初期ズーム=1 を保証） -->
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>みどり亭｜トップメニュー</title>
   <!-- 同一フォルダ内のCSSを読み込み -->
-  <link rel="stylesheet" href="top_menu.css" />
+  <!-- クエリバージョンを付与してキャッシュ反映を確実にする -->
+  <link rel="stylesheet" href="top_menu.css?v=20251118a" />
 </head>
 <body>
   <!-- ヘッダー：店舗名／席IDとLO残時間／現在時刻 -->
@@ -98,6 +100,6 @@
   </footer>
 
   <!-- 同一フォルダ内のJSを読み込み（deferで確実に後読み） -->
-  <script src="top_menu.js" defer></script>
+  <script src="top_menu.js?v=20251118a" defer></script>
 </body>
 </html>
