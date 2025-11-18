@@ -3,7 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <title>メニュー一覧 - 居酒屋みどり亭</title>
-  <link rel="stylesheet" href="menu_list.css">
+  <!-- モバイル縮小表示の解消：端末幅＆初期倍率を正しく指定 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <!-- キャッシュ回避のためクエリバージョンを付与（可逆：クエリを削除すれば元に戻ります） -->
+  <link rel="stylesheet" href="menu_list.css?v=20251118a">
 </head>
 <body>
   <!-- トップと同様のヘッダー（店舗名／座席／LO／現在時刻） -->
@@ -62,9 +65,9 @@
     </div>
   </div>
   
-  <script src="api.js"></script>
+  <script src="api.js?v=20251118a"></script>
   <!-- top_menu.js を先に読み込む（startClock / showToast を先に定義） -->
-  <script src="top_menu.js"></script>
-  <script src="menu_list.js"></script>
+  <script src="top_menu.js?v=20251118a"></script>
+  <script src="menu_list.js?v=20251118a"></script>
 </body>
 </html>
