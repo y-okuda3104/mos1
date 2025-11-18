@@ -15,21 +15,13 @@
 const storeId = "001"; // 仮の店舗ID
 let menuItems = [];
 let cart = {}; // { itemId: quantity, ... }
-let seatId = localStorage.getItem("seatId") || "C-01";
+/* note: top_menu.js でも `seatId` をグローバルに定義しているため衝突を避ける。
+   menu_list.js 側ではローカルな currentSeat を使用する。
+   currentSeat は localStorage の seatId を正規化した値（例: C-05）を持つ。
+*/
+let currentSeat = normalizeSeatId(localStorage.getItem("seatId") || "C-01");
 
-/**
- * 座席ID正規化関数
- * 入力値を「英字1文字-2桁」形式に統一（C-05 など）
- */
-function normalizeSeatId(input) {
-  if (!input) return null;
-  const s = String(input).trim().toUpperCase();
-  const m = s.match(/^([A-Z])[-\s]?(\d{1,2})$/);
-  if (!m) return null;
-  return `${m[1]}-${String(parseInt(m[2], 10)).padStart(2, '0')}`;
-}
-seatId = normalizeSeatId(seatId);
-const cartKey = `cart_${seatId}`;
+const cartKey = `cart_${currentSeat}`;
 
 /**
  * ダミーメニュー生成（API未応答時のフォールバック用、12品）
@@ -57,7 +49,7 @@ let orders = [];
 const ordersKeyBase = 'orders_';
 
 function getOrdersKey() {
-  return ordersKeyBase + (seatId || 'unknown');
+  return ordersKeyBase + (currentSeat || 'unknown');
 }
 
 /**
@@ -273,18 +265,20 @@ function renderCart() {
     const minusBtn = document.createElement('button');
     minusBtn.textContent = '−';
     minusBtn.className = 'primary';
-    minusBtn.style.padding = '4px 8px';
-    minusBtn.style.fontSize = '14px';
-    minusBtn.style.minWidth = '32px';
+    minusBtn.style.padding = '6px 10px';
+    minusBtn.style.fontSize = '16px';
+    minusBtn.style.minWidth = '44px'; // 44px 相当の操作領域に変更
+    minusBtn.setAttribute('aria-label', `減らす ${item.name}`);
     minusBtn.addEventListener('click', () => decreaseCart(id));
 
     // プラスボタン
     const plusBtn = document.createElement('button');
     plusBtn.textContent = '+';
     plusBtn.className = 'primary';
-    plusBtn.style.padding = '4px 8px';
-    plusBtn.style.fontSize = '14px';
-    plusBtn.style.minWidth = '32px';
+    plusBtn.style.padding = '6px 10px';
+    plusBtn.style.fontSize = '16px';
+    plusBtn.style.minWidth = '44px'; // 44px 相当の操作領域に変更
+    plusBtn.setAttribute('aria-label', `増やす ${item.name}`);
     plusBtn.addEventListener('click', () => increaseCart(id));
 
     btnContainer.appendChild(minusBtn);
@@ -389,33 +383,97 @@ if (confirmBtn) {
 }
 
 /**
+ * 追加：座席ID正規化関数を先に定義（currentSeat の初期化で使用するため）
+ */
+function normalizeSeatId(input) {
+  if (!input) return null;
+  const s = String(input).trim().toUpperCase();
+  const m = s.match(/^([A-Z])[-\s]?(\d{1,2})$/);
+  if (!m) return null;
+  return `${m[1]}-${String(parseInt(m[2], 10)).padStart(2, '0')}`;
+}
+
+/**
  * イベント登録（要素が存在するかチェック）
  */
-const si = document.getElementById("searchInput");
-if (si) si.addEventListener("input", renderMenu);
-const cf = document.getElementById("categoryFilter");
-if (cf) cf.addEventListener("change", renderMenu);
-const so = document.getElementById("sortOrder");
-if (so) so.addEventListener("change", renderMenu);
+document.addEventListener('DOMContentLoaded', () => {
+  // 検索・フィルタ・ソートイベント
+  const si = document.getElementById("searchInput");
+  if (si) si.addEventListener("input", renderMenu);
+  const cf = document.getElementById("categoryFilter");
+  if (cf) cf.addEventListener("change", renderMenu);
+  const so = document.getElementById("sortOrder");
+  if (so) so.addEventListener("change", renderMenu);
 
-/**
- * 初期ロード処理
- */
-loadMenu();
-loadCart();
-loadOrders();
-
-/**
- * 時刻表示の確保
- * top_menu.js の startClock が読み込まれている場合に呼び出す
- */
-if (typeof startClock === 'function') {
-  try {
-    startClock();
-  } catch (e) {
-    console.warn('startClock failed:', e);
+  // ミニカートのトグル
+  const cartToggleBtn = document.getElementById('miniCartToggle');
+  if (cartToggleBtn) {
+    cartToggleBtn.addEventListener('click', () => {
+      const details = document.getElementById('miniCartDetails');
+      if (!details) return;
+      const isHidden = details.hidden;
+      details.hidden = !isHidden;
+      cartToggleBtn.textContent = isHidden ? '閉じる' : '表示';
+      if (!details.hidden) {
+        renderCart();
+      }
+    });
   }
-}
+
+  // 注文確定ボタン（カート→orders）
+  const confirmBtn = document.getElementById('confirmOrder');
+  if (confirmBtn) {
+    confirmBtn.addEventListener('click', () => {
+      if (Object.keys(cart).length === 0) {
+        showToast('カートが空です');
+        return;
+      }
+
+      const now = Date.now();
+      Object.entries(cart).forEach(([id, qty]) => {
+        const item = menuItems.find(i => i.id === id) || { id, name: id, price: 0 };
+        orders.push({
+          id: item.id,
+          name: item.name,
+          price: item.price || 0,
+          qty: qty || 0,
+          delivered: false,
+          ts: now
+        });
+      });
+
+      saveOrders();
+      renderOrderStatus();
+      cart = {};
+      saveCart();
+      renderCart();
+
+      const details = document.getElementById('miniCartDetails');
+      if (details) {
+        details.hidden = true;
+        if (cartToggleBtn) cartToggleBtn.textContent = '表示';
+      }
+
+      if (typeof showToast === 'function') {
+        showToast('注文を確定しました');
+      }
+    });
+  }
+
+  // 初回データ読み込み（DOM 準備後に実行）
+  loadMenu();
+  loadCart();
+  loadOrders();
+
+  // top_menu.js に定義された startClock があれば即実行（なければ無視）
+  if (typeof startClock === 'function') {
+    try {
+      startClock();
+    } catch (e) {
+      console.warn('startClock failed:', e);
+    }
+  }
+});
 
 /**
  * showToast 関数が top_menu.js から読み込まれない場合の代替実装

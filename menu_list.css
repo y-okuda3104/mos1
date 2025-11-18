@@ -29,7 +29,9 @@ body {
 }
 .secondary {
   background: #fff; color: #ff7f32; border: 1px solid #fff;
-  padding: 8px 12px; border-radius: 6px; cursor: pointer; text-align: center;
+  padding: 10px 14px; border-radius: 6px; cursor: pointer; text-align: center;
+  min-height: 44px;
+  font-size: 16px;
 }
 
 /* TOPへ ボタン（ヘッダー右・他ページでも再利用） */
@@ -56,8 +58,9 @@ body {
   display:flex; gap:8px; align-items:center; flex-wrap:wrap;
   padding: 12px 16px 0 16px;
 }
-.search-bar input[type="text"] { flex:1; padding:8px 10px; border-radius:8px; border:1px solid #ddd; }
-.search-bar select { padding:8px 10px; border-radius:8px; border:1px solid #ddd; background:#fff; }
+/* ここを 44px 相当の操作領域に拡張 */
+.search-bar input[type="text"] { flex:1; padding:10px 12px; border-radius:8px; border:1px solid #ddd; min-height:44px; font-size:16px; }
+.search-bar select { padding:10px 12px; border-radius:8px; border:1px solid #ddd; background:#fff; min-height:44px; font-size:16px; }
 
 /* メニューグリッド（カード） */
 /* 画面比率崩れ防止のため基本は2列固定（必要ならメディアで1列にする） */
@@ -82,23 +85,23 @@ body {
 /* ボタン */
 .menuItem button {
   margin-top:auto; /* 下に揃える */
-  background:#ff7f32; color:#fff; border:none; padding:10px 12px; border-radius:8px; cursor:pointer;
+  background:#ff7f32; color:#fff; border:none; padding:12px 14px; border-radius:8px; cursor:pointer;
+  min-height:44px; font-size:16px; line-height:1; display:inline-flex; align-items:center; justify-content:center;
 }
 .menuItem button[disabled] {
   background:#ddd; color:#888; cursor:not-allowed;
 }
-
-/* sold out */
-.menuItem.soldOut { opacity:0.6; }
 
 /* primary ボタン（トップと見た目を合わせる） */
 .primary {
   background: #ff7f32;
   color: #fff;
   border: none;
-  padding: 8px 12px;
+  padding: 10px 14px;
   border-radius: 6px;
   cursor: pointer;
+  min-height: 44px;
+  font-size: 16px;
 }
 .primary:active { transform: translateY(1px); }
 
@@ -174,7 +177,14 @@ body {
     font-size: 18px;
   }
   .primary {
-    padding: 8px 12px;
-    font-size: 14px;
+    padding: 12px 16px;
+    font-size: 18px;
+    min-height: 48px; /* 若干大きめに */
+  }
+  /* プラマイ等小さめボタンが JS により生成されるため、ここで一般的なボタンサイズを確保 */
+  button {
+    min-height: 44px;
+    min-width: 44px;
+    font-size: 18px;
   }
 }
