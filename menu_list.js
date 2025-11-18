@@ -12,490 +12,301 @@
  * localStorage['seatId'] に保存されることを前提としています。
  */
 
-const storeId = "001"; // 仮の店舗ID
-let menuItems = [];
-let cart = {}; // { itemId: quantity, ... }
-/* note: top_menu.js でも `seatId` をグローバルに定義しているため衝突を避ける。
-   menu_list.js 側ではローカルな currentSeat を使用する。
-   currentSeat は localStorage の seatId を正規化した値（例: C-05）を持つ。
-*/
-let currentSeat = normalizeSeatId(localStorage.getItem("seatId") || "C-01");
+(function () {
+  'use strict';
 
-const cartKey = `cart_${currentSeat}`;
+  /* -------------------------
+     設定 / 状態
+     ------------------------- */
+  const storeId = '001';
+  const ordersKeyBase = 'orders_';
 
-/**
- * ダミーメニュー生成（API未応答時のフォールバック用、12品）
- * 画像 URL は空に設定（プレースホルダー表示を避けるため）
- */
-const DUMMY_MENU = Array.from({length:12}, (_,i) => {
-  const idx = i + 1;
-  return {
-    id: `m${String(idx).padStart(2,'0')}`,
-    name: `居酒屋メニュー ${idx}`,
-    price: (idx % 5 === 0) ? 0 : 500 + (idx * 50),
-    imageUrl: '', // 画像なし（URL を空に）
-    category: (idx % 3 === 0) ? '酒肴' : (idx % 3 === 1) ? '串焼き' : '揚げ物',
-    recommend: Math.floor(Math.random()*100),
-    quickOrder: Math.floor(Math.random()*10),
-    soldOut: false
-  };
-});
+  // シートIDはローカルで扱う（トップと衝突させない）
+  const currentSeat = (function () {
+    const s = localStorage.getItem('seatId') || 'C-01';
+    const m = String(s).trim().toUpperCase().match(/^([A-Z])[-\s]?(\d{1,2})$/);
+    return m ? `${m[1]}-${String(parseInt(m[2], 10)).padStart(2, '0')}` : 'C-01';
+  })();
 
-/**
- * 注文管理オブジェクト
- * orders は { id, name, price, qty, delivered, ts } の配列
- */
-let orders = [];
-const ordersKeyBase = 'orders_';
+  const cartKey = `cart_${currentSeat}`;
 
-function getOrdersKey() {
-  return ordersKeyBase + (currentSeat || 'unknown');
-}
+  // ダミーデータ（画像は空にして表示しない）
+  const DUMMY_MENU = Array.from({ length: 12 }, (_, i) => {
+    const idx = i + 1;
+    return {
+      id: `m${String(idx).padStart(2, '0')}`,
+      name: `居酒屋メニュー ${idx}`,
+      price: (idx % 5 === 0) ? 0 : 500 + (idx * 50),
+      imageUrl: '',
+      category: (idx % 3 === 0) ? '酒肴' : (idx % 3 === 1) ? '串焼き' : '揚げ物',
+      recommend: Math.floor(Math.random() * 100),
+      quickOrder: Math.floor(Math.random() * 10),
+      soldOut: false
+    };
+  });
 
-/**
- * localStorage から注文履歴を読み込む
- */
-function loadOrders() {
-  try {
-    const raw = localStorage.getItem(getOrdersKey());
-    orders = raw ? JSON.parse(raw) : [];
-  } catch (e) {
-    console.error('Failed to load orders:', e);
-    orders = [];
+  let menuItems = [];
+  let cart = {};   // { itemId: qty }
+  let orders = []; // [{id,name,price,qty,delivered,ts}, ...]
+
+  /* -------------------------
+     ユーティリティ
+     ------------------------- */
+  function ordersKey() { return ordersKeyBase + currentSeat; }
+  function lsGet(key) { try { return JSON.parse(localStorage.getItem(key)); } catch (e) { return null; } }
+  function lsSet(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) { /* ignore */ } }
+  function safeShowToast(msg) { if (typeof showToast === 'function') showToast(msg); else console.log('[toast]', msg); }
+
+  /* -------------------------
+     データ読み込み / 保存
+     ------------------------- */
+  function loadMenuFromApi() {
+    return fetch(`/api/menu?storeId=${storeId}`)
+      .then(r => r.ok ? r.json() : Promise.reject('no-res'))
+      .then(j => (j && j.items && j.items.length) ? j.items : DUMMY_MENU)
+      .catch(() => DUMMY_MENU);
   }
-  renderOrderStatus();
-}
 
-/**
- * 注文履歴を localStorage に保存
- */
-function saveOrders() {
-  localStorage.setItem(getOrdersKey(), JSON.stringify(orders));
-}
+  function loadCart() {
+    const saved = lsGet(cartKey) || {};
+    cart = (typeof saved === 'object') ? saved : {};
+  }
+  function saveCart() { lsSet(cartKey, cart); }
 
-/**
- * メニューを読み込む（API or ダミー）
- */
-function loadMenu() {
-  fetch(`/api/menu?storeId=${storeId}`)
-    .then(res => res.json())
-    .then(data => {
-      menuItems = (data && data.items && data.items.length) ? data.items : DUMMY_MENU;
-      renderMenu();
-      populateCategories();
-    })
-    .catch(() => {
-      // フォールバック：API 応答なしの場合
-      console.warn('Menu API unavailable, using dummy menu');
-      menuItems = DUMMY_MENU;
-      renderMenu();
-      populateCategories();
+  function loadOrders() {
+    orders = lsGet(ordersKey()) || [];
+  }
+  function saveOrders() { lsSet(ordersKey(), orders); }
+
+  /* -------------------------
+     描画ロジック
+     ------------------------- */
+  function renderMenu() {
+    const container = document.getElementById('menuContainer');
+    if (!container) return;
+
+    const keyword = (document.getElementById('searchInput') || {}).value || '';
+    const category = (document.getElementById('categoryFilter') || {}).value || '';
+    const sort = (document.getElementById('sortOrder') || {}).value || 'recommend';
+
+    let items = menuItems.filter(item =>
+      (!category || item.category === category) &&
+      (!keyword || item.name.toLowerCase().includes(keyword.toLowerCase()))
+    );
+
+    if (sort === 'recommend') items.sort((a, b) => b.recommend - a.recommend);
+    if (sort === 'category') items.sort((a, b) => a.category.localeCompare(b.category));
+    if (sort === 'quick') items.sort((a, b) => a.quickOrder - b.quickOrder);
+
+    container.innerHTML = '';
+    items.forEach(item => {
+      const card = document.createElement('div');
+      card.className = 'menuItem' + (item.soldOut ? ' soldOut' : '');
+      // 画像は存在する場合のみ表示
+      const imgHtml = item.imageUrl ? `<img src="${item.imageUrl}" alt="${escapeHtml(item.name)}">` : '';
+      card.innerHTML = `
+        ${imgHtml}
+        <div class="name">${escapeHtml(item.name)}</div>
+        <div class="price">${item.price === 0 ? '¥0（無料）' : `¥${item.price}`}</div>
+        <button ${item.soldOut ? 'disabled' : ''} data-id="${escapeHtml(item.id)}">${item.soldOut ? '売切' : '追加'}</button>
+      `;
+      container.appendChild(card);
+
+      const btn = card.querySelector('button[data-id]');
+      if (btn && !item.soldOut) {
+        btn.addEventListener('click', () => { addToCart(item.id); });
+      }
     });
-}
+  }
 
-/**
- * メニューを画面に描画
- * 検索・カテゴリ・ソート条件を適用してフィルタリング
- */
-function renderMenu() {
-  const container = document.getElementById("menuContainer");
-  if (!container) return;
+  // 簡易 HTML エスケープ（表示目的）
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  }
 
-  const keywordEl = document.getElementById("searchInput");
-  const categoryEl = document.getElementById("categoryFilter");
-  const sortEl = document.getElementById("sortOrder");
-  const keyword = keywordEl ? String(keywordEl.value).toLowerCase() : '';
-  const category = categoryEl ? categoryEl.value : '';
-  const sort = sortEl ? sortEl.value : 'recommend';
+  function populateCategories() {
+    const sel = document.getElementById('categoryFilter');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">すべてのカテゴリ</option>';
+    const cats = Array.from(new Set(menuItems.map(i => i.category))).filter(Boolean);
+    cats.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c; opt.textContent = c;
+      sel.appendChild(opt);
+    });
+  }
 
-  // フィルタリング
-  let filtered = menuItems.filter(item => {
-    return (!category || item.category === category) &&
-           (!keyword || item.name.toLowerCase().includes(keyword));
-  });
+  // カートの要約（点数）と詳細（商品一覧）を描画
+  function renderCart() {
+    const summaryCount = document.getElementById('cartCount');
+    const details = document.getElementById('miniCartDetails');
+    const listEl = document.getElementById('cartItems');
+    const totalEl = document.getElementById('cartTotal');
+    if (!summaryCount || !listEl || !totalEl) return;
 
-  // ソート
-  if (sort === "recommend") filtered.sort((a, b) => b.recommend - a.recommend);
-  if (sort === "category") filtered.sort((a, b) => a.category.localeCompare(b.category));
-  if (sort === "quick") filtered.sort((a, b) => a.quickOrder - b.quickOrder);
+    // 要約点数
+    const totalItems = Object.values(cart).reduce((s, q) => s + (Number(q) || 0), 0);
+    summaryCount.textContent = String(totalItems);
 
-  container.innerHTML = "";
-  filtered.forEach(item => {
-    const div = document.createElement("div");
-    div.className = "menuItem" + (item.soldOut ? " soldOut" : "");
-    
-    // 画像表示は URL が存在する場合のみ
-    const imgHtml = item.imageUrl ? `<img src="${item.imageUrl}" alt="${item.name}">` : '';
-    
-    div.innerHTML = `
-      ${imgHtml}
-      <div class="name">${item.name}</div>
-      <div class="price">${item.price === 0 ? "¥0（無料）" : `¥${item.price}`}</div>
-      <button ${item.soldOut ? "disabled" : ""} data-id="${item.id}">${item.soldOut ? '売切' : '追加'}</button>
-    `;
-    container.appendChild(div);
+    // 詳細リスト（商品名と数量、プラマイボタン）
+    listEl.innerHTML = '';
+    let total = 0;
+    Object.entries(cart).forEach(([id, qty]) => {
+      const item = menuItems.find(i => i.id === id) || { id, name: id, price: 0 };
+      const li = document.createElement('li');
+      li.className = 'cart-line';
+      // 左：名前 xN
+      const left = document.createElement('div');
+      left.textContent = `${item.name} `;
+      const strong = document.createElement('strong');
+      strong.textContent = `x${qty}`;
+      left.appendChild(strong);
+      // 右：プラマイボタン
+      const right = document.createElement('div');
+      right.style.display = 'flex';
+      right.style.gap = '6px';
+      const minus = document.createElement('button');
+      minus.className = 'primary';
+      minus.textContent = '−';
+      minus.setAttribute('aria-label', `減らす ${item.name}`);
+      minus.addEventListener('click', () => { decreaseCart(id); });
+      const plus = document.createElement('button');
+      plus.className = 'primary';
+      plus.textContent = '+';
+      plus.setAttribute('aria-label', `増やす ${item.name}`);
+      plus.addEventListener('click', () => { increaseCart(id); });
+      right.appendChild(minus);
+      right.appendChild(plus);
 
-    // ボタンイベント登録（安全なデータ属性使用）
-    const btn = div.querySelector('button[data-id]');
-    if (btn && !item.soldOut) {
-      btn.addEventListener('click', () => addToCart(item.id));
-    }
-  });
-}
+      li.style.display = 'flex';
+      li.style.justifyContent = 'space-between';
+      li.style.alignItems = 'center';
+      li.appendChild(left);
+      li.appendChild(right);
+      listEl.appendChild(li);
 
-/**
- * カテゴリ選択肢を動的に生成
- */
-function populateCategories() {
-  const select = document.getElementById("categoryFilter");
-  if (!select) return;
-  select.innerHTML = '<option value="">すべてのカテゴリ</option>';
-  const categories = [...new Set(menuItems.map(item => item.category))];
-  categories.forEach(cat => {
-    const opt = document.createElement('option');
-    opt.value = cat;
-    opt.textContent = cat;
-    select.appendChild(opt);
-  });
-}
+      total += (item.price || 0) * (Number(qty) || 0);
+    });
 
-/**
- * カートに商品を追加
- */
-function addToCart(itemId) {
-  cart[itemId] = (cart[itemId] || 0) + 1;
-  saveCart();
-  renderCart();
-}
+    totalEl.textContent = `合計: ¥${total}`;
+  }
 
-/**
- * カートから商品を削除
- */
-function removeFromCart(itemId) {
-  delete cart[itemId];
-  saveCart();
-  renderCart();
-}
+  // 配膳ステータスを画面に表示
+  function renderOrderStatus() {
+    const del = document.getElementById('deliveredCount');
+    const pend = document.getElementById('pendingCount');
+    if (!del || !pend) return;
+    const [delivered, pending] = orders.reduce((acc, o) => {
+      acc[o.delivered ? 0 : 1] += (Number(o.qty) || 0);
+      return acc;
+    }, [0, 0]);
+    del.textContent = String(delivered);
+    pend.textContent = String(pending);
+  }
 
-/**
- * カートの数量を増やす
- */
-function increaseCart(itemId) {
-  cart[itemId] = (cart[itemId] || 0) + 1;
-  saveCart();
-  renderCart();
-}
-
-/**
- * カートの数量を減らす
- */
-function decreaseCart(itemId) {
-  if (!cart[itemId] || cart[itemId] <= 1) {
-    removeFromCart(itemId);
-  } else {
-    cart[itemId]--;
+  /* -------------------------
+     カート操作（外部公開的な関数）
+     ------------------------- */
+  function addToCart(itemId) {
+    cart[itemId] = (Number(cart[itemId]) || 0) + 1;
     saveCart();
     renderCart();
   }
-}
+  function removeFromCart(itemId) {
+    delete cart[itemId];
+    saveCart();
+    renderCart();
+  }
+  function increaseCart(itemId) { addToCart(itemId); }
+  function decreaseCart(itemId) {
+    if (!cart[itemId]) return;
+    if (cart[itemId] <= 1) removeFromCart(itemId);
+    else { cart[itemId] = Number(cart[itemId]) - 1; saveCart(); renderCart(); }
+  }
 
-/**
- * カートを localStorage に保存
- */
-function saveCart() {
-  localStorage.setItem(cartKey, JSON.stringify(cart));
-}
-
-/**
- * localStorage からカートを読み込む
- */
-function loadCart() {
-  const saved = localStorage.getItem(cartKey);
-  cart = saved ? JSON.parse(saved) : {};
-  renderCart();
-}
-
-/**
- * カート UI を描画・更新
- * - 要約（点数表示）を常時表示
- * - 詳細（リスト・合計・プラマイボタン）は初期非表示
- */
-function renderCart() {
-  // 要約：カート内の総点数を計算
-  const cartCountEl = document.getElementById('cartCount');
-  let totalItems = 0;
-  Object.values(cart).forEach(q => totalItems += (q || 0));
-  if (cartCountEl) cartCountEl.textContent = String(totalItems);
-
-  // 詳細リスト描画
-  const ul = document.getElementById("cartItems");
-  const totalDiv = document.getElementById("cartTotal");
-  if (!ul || !totalDiv) return;
-
-  ul.innerHTML = "";
-  let total = 0;
-  Object.entries(cart).forEach(([id, qty]) => {
-    const item = menuItems.find(i => i.id === id);
-    if (!item) return;
-
-    // リスト行を作成
-    const li = document.createElement("li");
-    li.style.display = 'flex';
-    li.style.alignItems = 'center';
-    li.style.justifyContent = 'space-between';
-    li.style.marginBottom = '8px';
-    li.style.padding = '8px';
-    li.style.background = '#f5f5f5';
-    li.style.borderRadius = '6px';
-
-    // 商品名と数量
-    const nameQty = document.createElement('span');
-    nameQty.textContent = `${item.name} `;
-    const nameQtyStrong = document.createElement('strong');
-    nameQtyStrong.textContent = `x${qty}`;
-    nameQty.appendChild(nameQtyStrong);
-
-    // プラマイボタンコンテナ
-    const btnContainer = document.createElement('div');
-    btnContainer.style.display = 'flex';
-    btnContainer.style.gap = '4px';
-    btnContainer.style.alignItems = 'center';
-
-    // マイナスボタン
-    const minusBtn = document.createElement('button');
-    minusBtn.textContent = '−';
-    minusBtn.className = 'primary';
-    minusBtn.style.padding = '6px 10px';
-    minusBtn.style.fontSize = '16px';
-    minusBtn.style.minWidth = '44px'; // 44px 相当の操作領域に変更
-    minusBtn.setAttribute('aria-label', `減らす ${item.name}`);
-    minusBtn.addEventListener('click', () => decreaseCart(id));
-
-    // プラスボタン
-    const plusBtn = document.createElement('button');
-    plusBtn.textContent = '+';
-    plusBtn.className = 'primary';
-    plusBtn.style.padding = '6px 10px';
-    plusBtn.style.fontSize = '16px';
-    plusBtn.style.minWidth = '44px'; // 44px 相当の操作領域に変更
-    plusBtn.setAttribute('aria-label', `増やす ${item.name}`);
-    plusBtn.addEventListener('click', () => increaseCart(id));
-
-    btnContainer.appendChild(minusBtn);
-    btnContainer.appendChild(plusBtn);
-
-    li.appendChild(nameQty);
-    li.appendChild(btnContainer);
-    ul.appendChild(li);
-
-    total += (item.price || 0) * qty;
-  });
-  totalDiv.textContent = `合計: ¥${total}`;
-}
-
-/**
- * 注文ステータス表示を更新
- * 配膳済み / 未配膳の点数を集計して表示
- */
-function renderOrderStatus() {
-  const delEl = document.getElementById('deliveredCount');
-  const pendEl = document.getElementById('pendingCount');
-  if (!delEl || !pendEl) return;
-
-  // orders から配膳状態別に集計
-  let delivered = 0;
-  let pending = 0;
-  orders.forEach(o => {
-    if (o.delivered) {
-      delivered += (o.qty || 0);
-    } else {
-      pending += (o.qty || 0);
-    }
-  });
-
-  delEl.textContent = String(delivered);
-  pendEl.textContent = String(pending);
-}
-
-/**
- * カート表示トグルボタンのイベント処理
- */
-const cartToggleBtn = document.getElementById('miniCartToggle');
-if (cartToggleBtn) {
-  cartToggleBtn.addEventListener('click', () => {
-    const details = document.getElementById('miniCartDetails');
-    if (!details) return;
-    const isHidden = details.hidden;
-    details.hidden = !isHidden;
-    cartToggleBtn.textContent = isHidden ? '閉じる' : '表示';
-    // 詳細開時に内容を更新
-    if (!details.hidden) {
-      renderCart();
-    }
-  });
-}
-
-/**
- * 注文確定ボタンのイベント処理
- * カート内の商品を orders に移して未配膳としてカウント
- */
-const confirmBtn = document.getElementById('confirmOrder');
-if (confirmBtn) {
-  confirmBtn.addEventListener('click', () => {
-    // カートが空の場合は何もしない
+  /* -------------------------
+     注文確定
+     ------------------------- */
+  function confirmOrder() {
     if (Object.keys(cart).length === 0) {
-      showToast('カートが空です');
+      safeShowToast('カートが空です');
       return;
     }
-
-    // 各商品を orders に追加（未配膳フラグを false で）
-    const now = Date.now();
+    const ts = Date.now();
     Object.entries(cart).forEach(([id, qty]) => {
       const item = menuItems.find(i => i.id === id) || { id, name: id, price: 0 };
-      orders.push({
-        id: item.id,
-        name: item.name,
-        price: item.price || 0,
-        qty: qty || 0,
-        delivered: false,
-        ts: now
-      });
+      orders.push({ id: item.id, name: item.name, price: item.price || 0, qty: Number(qty) || 0, delivered: false, ts });
     });
-
-    // 保存して UI を更新
     saveOrders();
-    renderOrderStatus(); // 注文ステータスを先に更新
+    renderOrderStatus();
     cart = {};
     saveCart();
     renderCart();
-
-    // トグルを閉じる
+    // close details if open
     const details = document.getElementById('miniCartDetails');
-    if (details) {
-      details.hidden = true;
-      cartToggleBtn.textContent = '表示';
+    const toggle = document.getElementById('miniCartToggle');
+    if (details && toggle) { details.hidden = true; toggle.textContent = '表示'; }
+    safeShowToast('注文を確定しました');
+  }
+
+  /* -------------------------
+     初期化 / イベント登録
+     ------------------------- */
+  function initBindings() {
+    // search / filter / sort
+    const si = document.getElementById('searchInput');
+    const cf = document.getElementById('categoryFilter');
+    const so = document.getElementById('sortOrder');
+    if (si) si.addEventListener('input', renderMenu);
+    if (cf) cf.addEventListener('change', renderMenu);
+    if (so) so.addEventListener('change', renderMenu);
+
+    // cart toggle
+    const toggle = document.getElementById('miniCartToggle');
+    if (toggle) {
+      toggle.addEventListener('click', () => {
+        const details = document.getElementById('miniCartDetails');
+        if (!details) return;
+        const nowHidden = details.hidden;
+        details.hidden = !nowHidden;
+        toggle.textContent = nowHidden ? '閉じる' : '表示';
+        if (!details.hidden) renderCart();
+      });
     }
 
-    if (typeof showToast === 'function') {
-      showToast('注文を確定しました');
+    // confirm order
+    const confirmBtn = document.getElementById('confirmOrder');
+    if (confirmBtn) confirmBtn.addEventListener('click', confirmOrder);
+  }
+
+  /* -------------------------
+     初期化エントリ
+     ------------------------- */
+  document.addEventListener('DOMContentLoaded', async () => {
+    initBindings();
+    loadCart();
+    loadOrders();
+    menuItems = await loadMenuFromApi();
+    populateCategories();
+    renderMenu();
+    renderCart();
+    renderOrderStatus();
+
+    // startClock がトップ側で提供されていれば実行（時刻表示）
+    if (typeof startClock === 'function') {
+      try { startClock(); } catch (e) { console.warn('startClock failed', e); }
     }
   });
-}
 
-/**
- * 追加：座席ID正規化関数を先に定義（currentSeat の初期化で使用するため）
- */
-function normalizeSeatId(input) {
-  if (!input) return null;
-  const s = String(input).trim().toUpperCase();
-  const m = s.match(/^([A-Z])[-\s]?(\d{1,2})$/);
-  if (!m) return null;
-  return `${m[1]}-${String(parseInt(m[2], 10)).padStart(2, '0')}`;
-}
-
-/**
- * イベント登録（要素が存在するかチェック）
- */
-document.addEventListener('DOMContentLoaded', () => {
-  // 検索・フィルタ・ソートイベント
-  const si = document.getElementById("searchInput");
-  if (si) si.addEventListener("input", renderMenu);
-  const cf = document.getElementById("categoryFilter");
-  if (cf) cf.addEventListener("change", renderMenu);
-  const so = document.getElementById("sortOrder");
-  if (so) so.addEventListener("change", renderMenu);
-
-  // ミニカートのトグル
-  const cartToggleBtn = document.getElementById('miniCartToggle');
-  if (cartToggleBtn) {
-    cartToggleBtn.addEventListener('click', () => {
-      const details = document.getElementById('miniCartDetails');
-      if (!details) return;
-      const isHidden = details.hidden;
-      details.hidden = !isHidden;
-      cartToggleBtn.textContent = isHidden ? '閉じる' : '表示';
-      if (!details.hidden) {
-        renderCart();
-      }
-    });
-  }
-
-  // 注文確定ボタン（カート→orders）
-  const confirmBtn = document.getElementById('confirmOrder');
-  if (confirmBtn) {
-    confirmBtn.addEventListener('click', () => {
-      if (Object.keys(cart).length === 0) {
-        showToast('カートが空です');
-        return;
-      }
-
-      const now = Date.now();
-      Object.entries(cart).forEach(([id, qty]) => {
-        const item = menuItems.find(i => i.id === id) || { id, name: id, price: 0 };
-        orders.push({
-          id: item.id,
-          name: item.name,
-          price: item.price || 0,
-          qty: qty || 0,
-          delivered: false,
-          ts: now
-        });
-      });
-
-      saveOrders();
-      renderOrderStatus();
-      cart = {};
-      saveCart();
-      renderCart();
-
-      const details = document.getElementById('miniCartDetails');
-      if (details) {
-        details.hidden = true;
-        if (cartToggleBtn) cartToggleBtn.textContent = '表示';
-      }
-
-      if (typeof showToast === 'function') {
-        showToast('注文を確定しました');
-      }
-    });
-  }
-
-  // 初回データ読み込み（DOM 準備後に実行）
-  loadMenu();
-  loadCart();
-  loadOrders();
-
-  // top_menu.js に定義された startClock があれば即実行（なければ無視）
-  if (typeof startClock === 'function') {
-    try {
-      startClock();
-    } catch (e) {
-      console.warn('startClock failed:', e);
-    }
-  }
-});
-
-/**
- * showToast 関数が top_menu.js から読み込まれない場合の代替実装
- */
-if (typeof showToast === 'undefined') {
-  window.showToast = (message) => {
-    const toast = document.getElementById('toast');
-    if (!toast) {
-      console.log('[Toast]', message);
-      return;
-    }
-    toast.textContent = message;
-    toast.classList.add('show');
-    setTimeout(() => toast.classList.remove('show'), 3000);
+  /* -------------------------
+     デバッグ用（手動で配膳済みにする等）
+     ------------------------- */
+  window.__menu_debug = {
+    addToCart,
+    removeFromCart,
+    increaseCart,
+    decreaseCart,
+    confirmOrder,
+    markDelivered: (id) => { orders = orders.map(o => o.id === id ? ({ ...o, delivered: true }) : o); saveOrders(); renderOrderStatus(); }
   };
-}
-
-/**
- * デバッグ用ユーティリティ：配膳済みに手動で変更
- */
-window.markDelivered = (id) => {
-  orders = orders.map(o => o.id === id ? ({...o, delivered: true}) : o);
-  saveOrders();
-  renderOrderStatus();
-};
+})();
