@@ -180,6 +180,26 @@ console.log(JSON.parse(localStorage.getItem('cart_C-05')));
 ```
 
 ### 開発環境セットアップ
+
+## 手順について
+- 必要要件として、Node.jsのv25以上を入れておいてください。
+```bash
+node -v
+```
+で確認ができます。  
+また、python3での開発サーバの起動もできます。
+
+
+## インストール手順  
+まず初めにscoop  をインストールします。  
+インストールの仕方がわからない場合には、[Me1td0wn76](https://github.com/Me1td0wn76/Powershell-env-setup)
+からPS-env-setup-run.batを起動し、必要なものをインストールしてください。
+その後に、
+```bash
+node -v 
+```
+でバージョンが確認出来たら成功です。
+その後に以下のbashコマンドをmos1のディレクトリ内で打てば開発サーバが起動します。  
 ```bash
 # ローカルサーバー起動（例：Live Server）
 npx serve .
