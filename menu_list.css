@@ -1,100 +1,242 @@
-/* ベース（トップページに合わせたフォント／背景） */
-* { box-sizing: border-box; }
-html, body { margin: 0; padding: 0; }
+/**
+ * メニュー一覧画面スタイル
+ * 
+ * セクション:
+ * - Base & Layout: 基本レイアウト
+ * - Header: ヘッダー領域
+ * - Search & Filter: 検索・フィルタ機能
+ * - Menu Grid: メニューグリッド表示
+ * - Cart System: カート機能
+ * - Interactive Elements: ボタン・フォーム
+ * - Responsive Design: レスポンシブ対応
+ */
+
+/* ===== Base & Layout ===== */
+* { 
+  box-sizing: border-box; 
+}
+
+html, body { 
+  margin: 0; 
+  padding: 0; 
+}
+
 body {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans JP", Meiryo, sans-serif;
   background: #fff8f0;
   color: #333;
-  padding-bottom: 120px; /* ミニカート領域用 */
-  /* iOS Safari の自動縮小防止（可読性確保） */
-  -webkit-text-size-adjust: 100%;
+  padding-bottom: 120px; /* カート領域用の余白 */
+  line-height: 1.6;
 }
 
-/* ヘッダー（トップと同様） */
+/* ===== Header Styles ===== */
 .app-header {
-  background: linear-gradient(180deg,#ff7f32,#ff8f45);
+  background: linear-gradient(180deg, #ff7f32, #ff8f45);
   color: #fff;
   padding: 12px 16px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
-.header-inner{
-  display:flex; align-items:center; justify-content:space-between; gap:12px;
+
+.header-inner {
+  display: flex; 
+  align-items: center; 
+  justify-content: space-between; 
+  gap: 12px;
+  max-width: 1200px;
+  margin: 0 auto;
 }
-.header-left{ display:flex; flex-direction:column; gap:6px; }
-.header-right{ display:flex; align-items:center; }
-.app-header h1 { margin: 0 0 4px; font-size:20px; font-weight:700; }
-.current-time{ font-size:14px; background:rgba(255,255,255,0.12); padding:6px 10px; border-radius:8px; }
+
+.header-left { 
+  display: flex; 
+  flex-direction: column; 
+  gap: 6px; 
+}
+
+.header-right { 
+  display: flex; 
+  align-items: center; 
+}
+
+.app-header h1 { 
+  margin: 0 0 4px; 
+  font-size: 20px; 
+  font-weight: 700; 
+}
+
+.current-time { 
+  font-size: 14px; 
+  background: rgba(255, 255, 255, 0.12); 
+  padding: 6px 10px; 
+  border-radius: 8px; 
+  font-weight: 600;
+}
+
 .status {
   display: flex;
   flex-direction: column;
   gap: 4px;
   align-items: flex-start;
 }
-.secondary {
-  background: #fff; color: #ff7f32; border: 1px solid #fff;
-  padding: 10px 14px; border-radius: 6px; cursor: pointer; text-align: center;
-  min-height: 44px;
+
+/* TOPへボタン */
+.top-link {
+  display: inline-block;
+  margin-right: 12px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 700;
+  transition: background-color 0.2s ease;
+}
+
+.top-link:focus, 
+.top-link:hover {
+  background: rgba(255, 255, 255, 0.18);
+  text-decoration: none;
+}
+
+/* ===== Search & Filter ===== */
+.container { 
+  padding: 16px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.search-bar {
+  display: flex; 
+  gap: 8px; 
+  align-items: center; 
+  flex-wrap: wrap;
+  padding: 12px 16px 0 16px;
+  background: #fff;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.search-bar input[type="text"] { 
+  flex: 1; 
+  padding: 10px 12px; 
+  border-radius: 8px; 
+  border: 1px solid #ddd; 
+  min-height: 44px; 
+  font-size: 16px;
+  transition: border-color 0.2s ease;
+}
+
+.search-bar input[type="text"]:focus {
+  outline: none;
+  border-color: #ff7f32;
+  box-shadow: 0 0 0 2px rgba(255, 127, 50, 0.2);
+}
+
+.search-bar select { 
+  padding: 10px 12px; 
+  border-radius: 8px; 
+  border: 1px solid #ddd; 
+  background: #fff; 
+  min-height: 44px; 
+  font-size: 16px;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+.search-bar select:focus {
+  outline: none;
+  border-color: #ff7f32;
+}
+
+/* ===== Menu Grid ===== */
+#menuContainer {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  padding: 8px 16px 40px 16px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.menuItem {
+  background: #fff; 
+  border: 1px solid #eee; 
+  border-radius: 10px; 
+  padding: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06); 
+  display: flex; 
+  flex-direction: column; 
+  gap: 8px;
+  min-height: 220px;
+  transition: all 0.2s ease;
+}
+
+.menuItem:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  transform: translateY(-1px);
+}
+
+.menuItem img {
+  width: 100%; 
+  height: 140px; 
+  object-fit: cover; 
+  border-radius: 8px;
+  background-color: #f5f5f5;
+}
+
+.menuItem .name { 
+  font-weight: 700; 
+  font-size: 16px;
+  color: #333;
+}
+
+.menuItem .price { 
+  color: #078000; 
+  font-weight: 600; 
   font-size: 16px;
 }
 
-/* TOPへ ボタン（ヘッダー右・他ページでも再利用） */
- .top-link {
-   display: inline-block;
-   margin-right: 12px;
-   padding: 8px 10px;
-   background: rgba(255,255,255,0.12);
-   color: #fff;
-   border-radius: 8px;
-   text-decoration: none;
-   font-weight: 700;
- }
- .top-link:focus, .top-link:hover {
-   background: rgba(255,255,255,0.18);
-   text-decoration: none;
- }
-
-/* コンテナ共通 */
-.container { padding: 16px; }
-
-/* 検索バー */
-.search-bar {
-  display:flex; gap:8px; align-items:center; flex-wrap:wrap;
-  padding: 12px 16px 0 16px;
+.menuItem .meta { 
+  color: #666; 
+  font-size: 13px; 
 }
-/* ここを 44px 相当の操作領域に拡張 */
-.search-bar input[type="text"] { flex:1; padding:10px 12px; border-radius:8px; border:1px solid #ddd; min-height:44px; font-size:16px; }
-.search-bar select { padding:10px 12px; border-radius:8px; border:1px solid #ddd; background:#fff; min-height:44px; font-size:16px; }
 
-/* メニューグリッド（カード） */
-/* 画面比率崩れ防止のため基本は2列固定（必要ならメディアで1列にする） */
-#menuContainer {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr); /* 1画面に2列表示を維持 */
-  gap: 12px;
-  padding: 8px 16px 40px 16px;
-}
-.menuItem {
-  background:#fff; border:1px solid #eee; border-radius:10px; padding:12px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06); display:flex; flex-direction:column; gap:8px;
-  min-height: 220px; /* 高さを揃えて縦潰れを防ぐ */
-}
-.menuItem img {
-  width:100%; height:140px; object-fit:cover; border-radius:8px;
-}
-.menuItem .name { font-weight:700; font-size:16px; }
-.menuItem .price { color:#078000; font-weight:600; }
-.menuItem .meta { color:#666; font-size:13px; }
-
-/* ボタン */
 .menuItem button {
-  margin-top:auto; /* 下に揃える */
-  background:#ff7f32; color:#fff; border:none; padding:12px 14px; border-radius:8px; cursor:pointer;
-  min-height:44px; font-size:16px; line-height:1; display:inline-flex; align-items:center; justify-content:center;
-}
-.menuItem button[disabled] {
-  background:#ddd; color:#888; cursor:not-allowed;
+  margin-top: auto;
+  background: #ff7f32; 
+  color: #fff; 
+  border: none; 
+  padding: 12px 14px; 
+  border-radius: 8px; 
+  cursor: pointer;
+  min-height: 44px; 
+  font-size: 16px; 
+  line-height: 1; 
+  display: inline-flex; 
+  align-items: center; 
+  justify-content: center;
+  font-weight: 600;
+  transition: all 0.2s ease;
 }
 
-/* primary ボタン（トップと見た目を合わせる） */
+.menuItem button:hover:not(:disabled) {
+  background: #e66a28;
+}
+
+.menuItem button[disabled] {
+  background: #ddd; 
+  color: #888; 
+  cursor: not-allowed;
+}
+
+.menuItem.soldOut { 
+  opacity: 0.6; 
+}
+
+/* ===== Interactive Elements ===== */
 .primary {
   background: #ff7f32;
   color: #fff;
@@ -104,25 +246,52 @@ body {
   cursor: pointer;
   min-height: 44px;
   font-size: 16px;
+  font-weight: 600;
+  transition: all 0.2s ease;
 }
-.primary:active { transform: translateY(1px); }
 
-/* ミニカート */
+.primary:hover:not(:disabled) {
+  background: #e66a28;
+}
+
+.primary:active:not(:disabled) { 
+  transform: translateY(1px); 
+}
+
+.secondary {
+  background: #fff; 
+  color: #ff7f32; 
+  border: 1px solid #ff7f32;
+  padding: 10px 14px; 
+  border-radius: 6px; 
+  cursor: pointer; 
+  text-align: center;
+  min-height: 44px;
+  font-size: 16px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.secondary:hover:not(:disabled) {
+  background: #ff7f32;
+  color: #fff;
+}
+
+/* ===== Cart System ===== */
 #miniCart {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
   background: #fff;
-  border-top: 2px solid #ccc;
+  border-top: 2px solid #ddd;
   padding: 12px 16px;
-  box-shadow: 0 -4px 12px rgba(0,0,0,0.06);
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
   z-index: 1000;
   max-height: 80vh;
   overflow-y: auto;
 }
 
-/* 要約表示（常時表示、大きく） */
 #miniCartSummary {
   display: flex;
   align-items: center;
@@ -132,9 +301,9 @@ body {
   font-weight: 600;
 }
 
-/* 詳細表示（展開時） */
 #miniCartDetails {
   margin-top: 12px;
+  animation: expandCart 0.3s ease;
 }
 
 #miniCartDetails h3 {
@@ -151,8 +320,60 @@ body {
   overflow-y: auto;
 }
 
-#miniCartDetails li {
-  /* li 内部で flexbox 制御されている */
+/* カートアイテム詳細スタイル */
+.cart-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  margin-bottom: 8px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+  transition: background-color 0.2s ease;
+}
+
+.cart-item:hover {
+  background: #f1f3f4;
+}
+
+.cart-item__info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.cart-item__name {
+  font-weight: 600;
+  color: #333;
+}
+
+.cart-item__quantity {
+  font-size: 14px;
+  color: #666;
+}
+
+.cart-item__controls {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.cart-button {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 8px 12px;
+  font-size: 16px;
+  font-weight: 700;
+  border-radius: 6px;
+}
+
+.empty-cart {
+  text-align: center;
+  padding: 20px;
+  color: #666;
+  font-style: italic;
 }
 
 #cartTotal {
@@ -160,31 +381,135 @@ body {
   font-size: 16px;
   font-weight: 600;
   text-align: right;
+  color: #078000;
+  padding: 8px 0;
+  border-top: 1px solid #e9ecef;
 }
 
-/* スマホ向け：768px以下で1列化＆可読サイズを確保（PCは既存の2列を維持） */
-@media (max-width:768px) {
-  /* 1列表示に切り替え */
-  #menuContainer { grid-template-columns: 1fr; }
+/* ===== State Messages ===== */
+.loading-message,
+.error-message,
+.no-results {
+  text-align: center;
+  padding: 40px 20px;
+  font-size: 16px;
+  color: #666;
+}
 
-  /* 画像は比率維持のまま少し低めに */
-  .menuItem img { height: 120px; }
+.error-message {
+  color: #dc3545;
+  background: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 8px;
+  margin: 20px;
+}
 
-  /* 文字サイズ：最低16px相当以上 */
-  .menuItem .name  { font-size: 18px; line-height: 1.35; }
-  .menuItem .price { font-size: 16px; }
-  .menuItem .meta  { font-size: 14px; }
+.loading-message {
+  color: #6c757d;
+}
 
-  /* 追加ボタン：タップ領域 48px 以上 */
-  .menuItem button { min-height: 48px; font-size: 17px; }
+.no-results {
+  color: #6c757d;
+  font-style: italic;
+}
 
-  /* 検索／フィルタの操作領域も広めに */
-  .search-bar { padding: 10px; }
+/* フィードバック効果 */
+.menuItem button.feedback {
+  background: #28a745 !important;
+  transform: scale(0.95);
+}
+
+/* ===== Animations ===== */
+@keyframes expandCart {
+  from {
+    opacity: 0;
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    max-height: 400px;
+  }
+}
+
+/* ===== Responsive Design ===== */
+@media (max-width: 768px) {
+  .header-inner {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  .search-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  
   .search-bar input[type="text"],
-  .search-bar select { min-height: 44px; font-size: 16px; }
+  .search-bar select {
+    width: 100%;
+  }
+}
 
-  /* ミニカートの視認性を少し上げる */
-  #miniCartSummary, #miniCartDetails h3, #cartTotal { font-size: 18px; }
-  .primary { padding: 12px 16px; font-size: 18px; min-height: 48px; }
-  button { min-height: 44px; min-width: 44px; font-size: 18px; }
+@media (max-width: 420px) {
+  #menuContainer { 
+    grid-template-columns: 1fr; 
+    gap: 8px;
+    padding: 8px 12px 40px 12px;
+  }
+  
+  .menuItem img { 
+    height: 120px; 
+  }
+  
+  .search-bar { 
+    padding: 10px; 
+  }
+  
+  #miniCartSummary {
+    font-size: 18px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  
+  #miniCartDetails h3 {
+    font-size: 18px;
+  }
+  
+  #cartTotal {
+    font-size: 18px;
+  }
+  
+  .primary {
+    padding: 12px 16px;
+    font-size: 18px;
+    min-height: 48px;
+  }
+  
+  button {
+    min-height: 44px;
+    min-width: 44px;
+    font-size: 18px;
+  }
+  
+  .container {
+    padding: 12px;
+  }
+}
+
+/* ===== Print Styles ===== */
+@media print {
+  #miniCart,
+  .search-bar,
+  .app-header {
+    display: none !important;
+  }
+  
+  body {
+    padding-bottom: 0;
+  }
+  
+  .menuItem {
+    break-inside: avoid;
+  }
 }

@@ -3,101 +3,133 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="description" content="みどり亭 居酒屋POS注文システム - 座席管理、メニュー注文、スタッフ呼び出し" />
+  <meta name="theme-color" content="#ff7f32" />
   <title>みどり亭｜トップメニュー</title>
-  <!-- 同一フォルダ内のCSSを読み込み -->
   <link rel="stylesheet" href="top_menu.css" />
 </head>
 <body>
-  <!-- ヘッダー：店舗名／席IDとLO残時間／現在時刻 -->
-  <header class="app-header">
+  <!-- メインヘッダー：店舗情報・座席・時刻表示 -->
+  <header class="app-header" role="banner">
     <div class="header-inner">
       <div class="header-left">
         <h1 id="storeName">みどり亭 本店</h1>
-        <div class="status">
-          <span id="seatLabel" aria-live="polite">席：未設定</span>
-          <span id="loLabel" aria-live="polite">ラストオーダーまで：計算中...</span>
-          <button id="btnSetSeat" class="secondary">座席変更</button>
+        <div class="status" role="status" aria-live="polite">
+          <span id="seatLabel" aria-label="現在の座席">席：未設定</span>
+          <span id="loLabel" aria-label="ラストオーダーまでの時間">ラストオーダーまで：計算中...</span>
+          <button id="btnSetSeat" class="secondary" type="button" 
+                  aria-describedby="seatLabel">
+            座席変更
+          </button>
         </div>
       </div>
       <div class="header-right">
-        <div id="currentTime" class="current-time" aria-live="polite">--:--:--</div>
+        <time id="currentTime" class="current-time" 
+              aria-live="polite" role="timer" 
+              aria-label="現在時刻">
+          --:--:--
+        </time>
       </div>
     </div>
   </header>
 
-  <!-- トップメニュー：メニュー一覧／注文履歴／スタッフ呼び出し -->
-  <main class="container">
-    <section class="grid">
-      <a class="card" href="menu_list.html">
-        <div class="card__icon" aria-hidden="true"></div>
+  <!-- メインナビゲーション -->
+  <main class="container" role="main">
+    <nav class="grid" role="navigation" aria-label="メインメニュー">
+      <a class="card" href="menu_list.html" 
+         aria-describedby="menu-desc">
+        <div class="card__icon" aria-hidden="true">🍽️</div>
         <h2 class="card__title">メニュー一覧</h2>
-        <p class="card__desc">取り皿・おしぼりなどもこちらから</p>
+        <p class="card__desc" id="menu-desc">
+          取り皿・おしぼりなどもこちらから
+        </p>
       </a>
 
-      <a class="card" href="order-history.html">
-        <div class="card__icon" aria-hidden="true"></div>
+      <a class="card" href="order-history.html"
+         aria-describedby="history-desc">
+        <div class="card__icon" aria-hidden="true">📋</div>
         <h2 class="card__title">注文履歴</h2>
-        <!-- <p class="card__desc">　</p> -->
+        <p class="card__desc" id="history-desc">
+          ご注文の履歴・配膳状況を確認
+        </p>
       </a>
 
-      <button class="card" id="btnCall" type="button" aria-label="スタッフ呼び出し">
-        <div class="card__icon" aria-hidden="true"></div>
+      <button class="card" id="btnCall" type="button" 
+              aria-describedby="call-desc">
+        <div class="card__icon" aria-hidden="true">🔔</div>
         <h2 class="card__title">スタッフ呼び出し</h2>
-        <p class="card__desc">スタッフを呼び出します</p>
+        <p class="card__desc" id="call-desc">
+          スタッフを呼び出します
+        </p>
       </button>
-    </section>
+    </nav>
+  </main>
 
-    <!-- 呼び出しの結果を表示するトースト -->
-    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <!-- トースト通知 -->
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-    <!-- 呼び出し完了を大きく中央に表示するモーダル（新規） -->
-    <div id="callResultModal" class="modal" hidden aria-hidden="true">
-      <div class="modal__backdrop" data-close="true"></div>
-      <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="callResultTitle">
-        <h3 id="callResultTitle">呼び出し完了</h3>
-        <p id="callResultMessage">スタッフを呼び出しました</p>
-        <div class="modal__actions" style="justify-content:center;">
-          <button id="closeCallResult" class="primary">閉じる</button>
-          <button id="retryCall" class="secondary" hidden>再試行</button>
-        </div>
+  <!-- 呼び出し完了モーダル -->
+  <div id="callResultModal" class="modal" hidden aria-hidden="true">
+    <div class="modal__backdrop"></div>
+    <div class="modal__dialog" role="dialog" aria-modal="true" 
+         aria-labelledby="callResultTitle">
+      <h3 id="callResultTitle">呼び出し完了</h3>
+      <p id="callResultMessage">スタッフを呼び出しました</p>
+      <div class="modal__actions">
+        <button id="closeCallResult" class="primary" type="button">
+          閉じる
+        </button>
+        <button id="retryCall" class="secondary" type="button" hidden>
+          再試行
+        </button>
       </div>
     </div>
-  </main>
+  </div>
 
   <!-- 呼び出し確認モーダル -->
   <div id="callModal" class="modal" hidden aria-hidden="true">
-    <div class="modal__backdrop" data-close="true"></div>
-    <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="callModalTitle">
+    <div class="modal__backdrop"></div>
+    <div class="modal__dialog" role="dialog" aria-modal="true" 
+         aria-labelledby="callModalTitle">
       <h3 id="callModalTitle">スタッフ呼び出しの確認</h3>
       <p>呼び出したらスタッフに通知されます。呼び出しますか？</p>
       <div class="modal__actions">
-        <button id="confirmCall" class="primary">呼び出す</button>
-        <button id="cancelCall" class="secondary">閉じる</button>
+        <button id="confirmCall" class="primary" type="button">
+          呼び出す
+        </button>
+        <button id="cancelCall" class="secondary" type="button">
+          閉じる
+        </button>
       </div>
     </div>
   </div>
 
   <!-- 座席選択モーダル -->
   <div id="seatModal" class="modal" hidden aria-hidden="true">
-    <div class="modal__backdrop" data-close="true"></div>
-    <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="seatModalTitle">
+    <div class="modal__backdrop"></div>
+    <div class="modal__dialog" role="dialog" aria-modal="true" 
+         aria-labelledby="seatModalTitle">
       <h3 id="seatModalTitle">座席を選択</h3>
       <p>ご利用になる座席を選択してください</p>
-      <label for="seatSelect" class="visually-hidden">座席を選択</label>
-      <select id="seatSelect" style="width:100%; padding:8px; margin:8px 0; font-size:16px;"></select>
+      <label for="seatSelect" class="form-label">座席選択</label>
+      <select id="seatSelect" class="form-select" 
+              aria-required="true">
+      </select>
       <div class="modal__actions">
-        <button id="confirmSeat" class="primary">設定</button>
-        <button id="cancelSeat" class="secondary">閉じる</button>
+        <button id="confirmSeat" class="primary" type="button">
+          設定
+        </button>
+        <button id="cancelSeat" class="secondary" type="button">
+          閉じる
+        </button>
       </div>
     </div>
   </div>
 
-  <footer class="app-footer">
-    <small>footer</small>
-    <!-- <small>Top menu／Display remaining LO time／Closing notice</small> -->
+  <footer class="app-footer" role="contentinfo">
+    <small>&copy; 2024 みどり亭 POS システム</small>
   </footer>
 
-  <!-- 同一フォルダ内のJSを読み込み（deferで確実に後読み） -->
   <script src="top_menu.js" defer></script>
 </body>
 </html>

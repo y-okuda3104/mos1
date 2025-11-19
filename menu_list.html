@@ -2,72 +2,99 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>メニュー一覧 - 居酒屋みどり亭</title>
-  <!-- モバイル縮小表示の解消：端末幅＆初期倍率を正しく指定 -->
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <!-- キャッシュ回避のためクエリバージョンを付与（可逆：クエリを削除すれば元に戻ります） -->
-  <link rel="stylesheet" href="menu_list.css?v=20251118a">
+  <meta name="description" content="みどり亭 メニュー一覧 - 料理の検索・注文・カート管理">
+  <meta name="theme-color" content="#ff7f32">
+  <title>メニュー一覧 - 居酒屋みどり亭</title>
+  <link rel="stylesheet" href="menu_list.css">
 </head>
 <body>
-  <!-- トップと同様のヘッダー（店舗名／座席／LO／現在時刻） -->
-  <header class="app-header">
+  <!-- ヘッダー：店舗情報・座席・LO・現在時刻 -->
+  <header class="app-header" role="banner">
     <div class="header-inner">
       <div class="header-left">
         <h1 id="storeName">みどり亭 ○○店</h1>
-        <div class="status">
-          <span id="seatLabel" aria-live="polite">席：未設定</span>
-          <span id="loLabel" aria-live="polite">ラストオーダーまで：計算中...</span>
+        <div class="status" role="status" aria-live="polite">
+          <span id="seatLabel" aria-label="現在の座席">席：未設定</span>
+          <span id="loLabel" aria-label="ラストオーダーまでの時間">
+            ラストオーダーまで：計算中...
+          </span>
         </div>
       </div>
       <div class="header-right">
-        <a href="top_menu.html" class="top-link" aria-label="トップメニューへ戻る">TOPへ</a>
-        <div id="currentTime" class="current-time" aria-live="polite">--:--:--</div>
+        <a href="top_menu.html" class="top-link" 
+           aria-label="トップメニューへ戻る">TOPへ</a>
+        <time id="currentTime" class="current-time" 
+              aria-live="polite" role="timer">--:--:--</time>
       </div>
     </div>
   </header>
   
-  <!-- 検索／フィルタはヘッダー直下に配置 -->
-  <section class="search-bar container">
-    <input type="text" id="searchInput" placeholder="メニュー検索">
-    <select id="categoryFilter">
+  <!-- 検索・フィルタ機能 -->
+  <section class="search-bar container" role="search" 
+           aria-label="メニュー検索・フィルタ">
+    <label for="searchInput" class="visually-hidden">メニュー検索</label>
+    <input type="text" id="searchInput" 
+           placeholder="メニュー検索" 
+           aria-label="料理名で検索">
+           
+    <label for="categoryFilter" class="visually-hidden">カテゴリ選択</label>
+    <select id="categoryFilter" aria-label="カテゴリでフィルター">
       <option value="">すべてのカテゴリ</option>
     </select>
-    <select id="sortOrder">
+    
+    <label for="sortOrder" class="visually-hidden">並び順</label>
+    <select id="sortOrder" aria-label="並び順を選択">
       <option value="recommend">おすすめ順</option>
       <option value="category">カテゴリ順</option>
       <option value="quick">クイック順</option>
     </select>
   </section>
   
-  <main id="menuContainer" class="container"></main>
+  <!-- メニュー表示エリア -->
+  <main id="menuContainer" class="container" 
+        role="main" aria-label="メニュー一覧">
+  </main>
   
-  <div id="miniCart">
+  <!-- カートシステム -->
+  <aside id="miniCart" role="complementary" aria-label="注文カート">
     <!-- 要約表示（常時） -->
-    <div id="miniCartSummary" style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
-      <!-- カート点数と注文ステータスを一行で表示 -->
-      <div style="display:flex; align-items:center; gap:16px; font-size:16px;">
-        <span>カート：<strong id="cartCount">0</strong> 点</span>
-        <span style="color:#666; font-size:14px;">
-          配膳済み: <span id="deliveredCount">0</span> 点　/　未配膳: <span id="pendingCount">0</span> 点
+    <div id="miniCartSummary">
+      <!-- カート点数と注文ステータス -->
+      <div class="cart-summary__info">
+        <span role="status" aria-live="polite">
+          カート：<strong id="cartCount" aria-label="カート内商品数">0</strong> 点
+        </span>
+        <span class="order-status" role="status" aria-live="polite">
+          配膳済み: <span id="deliveredCount" aria-label="配膳済み商品数">0</span> 点　/　
+          未配膳: <span id="pendingCount" aria-label="未配膳商品数">0</span> 点
         </span>
       </div>
       <div>
-        <button id="miniCartToggle" class="secondary" type="button">表示</button>
+        <button id="miniCartToggle" class="secondary" type="button"
+                aria-expanded="false" aria-controls="miniCartDetails">
+          表示
+        </button>
       </div>
     </div>
 
-    <!-- 詳細（初期は非表示） -->
-    <div id="miniCartDetails" hidden style="margin-top:8px;">
-      <h3 style="margin:4px 0;">カートの中身</h3>
-      <ul id="cartItems" style="margin:6px 0; padding-left:0;"></ul>
-      <div id="cartTotal" style="margin-bottom:8px;">合計: ¥0</div>
-      <button id="confirmOrder" class="primary">注文確定</button>
+    <!-- 詳細表示（展開時） -->
+    <div id="miniCartDetails" hidden aria-hidden="true">
+      <h3>カートの中身</h3>
+      <ul id="cartItems" role="list" aria-label="カート内商品一覧">
+      </ul>
+      <div id="cartTotal" role="status" aria-live="polite">
+        合計: ¥0
+      </div>
+      <button id="confirmOrder" class="primary" type="button">
+        注文確定
+      </button>
     </div>
-  </div>
+  </aside>
   
-  <script src="api.js?v=20251118a"></script>
-  <!-- top_menu.js を先に読み込む（startClock / showToast を先に定義） -->
-  <script src="top_menu.js?v=20251118a"></script>
-  <script src="menu_list.js?v=20251118a"></script>
+  <!-- スクリプト読み込み -->
+  <script src="api.js"></script>
+  <script src="top_menu.js"></script>
+  <script src="menu_list.js"></script>
 </body>
 </html>

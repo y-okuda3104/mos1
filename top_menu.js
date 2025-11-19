@@ -1,420 +1,561 @@
 /**
- * トップメニュー（更新版）
- * - 店舗名表示
- * - 現在時刻（右上）を1秒ごと更新
- * - ラストオーダーまでの残時間表示・通知
- * - 席ID設定（localStorage）／スタッフ呼び出し（モック）
+ * トップメニューシステム
  * 
- * 今後の変更・修正点
- * - 座席ID様式未設定
+ * 機能:
+ * - 店舗情報・時刻表示
+ * - 座席管理システム  
+ * - スタッフ呼び出し機能
+ * - ラストオーダー時間管理
  * 
+ * @version 2.0.0
+ * @author POS Development Team
  */
 
-/* ===== 設定（営業時間） ===== */
-const STORE_NAME = 'みどり亭 ○○店';
-const STORE_CLOSE = { hour: 24, minute: 0 };  // 0:00
-const LO_MINUS_MIN = 30;                      // 閉店30分前
-// ===== トースト設定 =====
-// モード:
-//  - 'overwrite' : スナックバーのように上書き（イベントが来たら表示を更新し、タイマーをリセット）
-//  - 'queue'     : 表示中は新着を保留し、表示が消えたら保留中の最新だけを表示する（連続時は最後のみ）
-const TOAST_MODE = 'overwrite'; // 'overwrite' | 'queue'
-const TOAST_DURATION_MS = 3000; // 表示時間（ミリ秒）
+/* ===== 設定定数 ===== */
+const CONFIG = {
+  STORE: {
+    NAME: 'みどり亭 ○○店',
+    CLOSE_HOUR: 24,
+    CLOSE_MINUTE: 0,
+    LO_MINUS_MINUTES: 30
+  },
+  TOAST: {
+    MODE: 'overwrite', // 'overwrite' | 'queue'  
+    DURATION_MS: 3000
+  },
+  CALL: {
+    COOLDOWN_MS: 30000,
+    MAX_RETRIES: 3
+  },
+  API: {
+    LO_ENDPOINT: '/api/lo',
+    CALL_ENDPOINT: '/api/call',
+    POLLING_INTERVAL_MS: 15000,
+    TIMEOUT_MS: 10000
+  },
+  SEAT: {
+    REGEX: /^[A-Z]-\d{2}$/,
+    TYPES: {
+      COUNTER: { prefix: 'C', count: 10, label: 'カウンター席' },
+      FLOOR_1F: { prefix: 'A', count: 5, label: '1階テーブル' },
+      FLOOR_2F: { prefix: 'B', count: 15, label: '2階テーブル' }
+    }
+  }
+};
 
-/* ===== 状態 ===== */
-let seatId = null;
-let notifiedLO = false;
-
-/* ===== 新規設定 ===== */
-const SEAT_REGEX = /^[A-Z]-\d{2}$/; // 英字1文字-2桁（例: C-05）
-const COOLDOWN_MS = 30_000;         // 呼び出しのクールダウン（ミリ秒）
-const LO_API = '/api/lo';           // LO情報取得（サーバー） 単純化したエンドポイント名
-const CALL_API = '/api/call';       // スタッフ呼び出しAPI（mock）
-
-let lastCallTs = 0;
-let callInProgress = false;
+/* ===== 状態管理 ===== */
+const state = {
+  seatId: null,
+  notifiedLO: false,
+  lastCallTs: 0,
+  callInProgress: false,
+  timers: {
+    clock: null,
+    loUpdate: null
+  }
+};
 
 /* ===== 初期化 ===== */
-document.addEventListener('DOMContentLoaded', () => {
-  // 店舗名表示
-  const storeEl = document.getElementById('storeName');
-  if (storeEl) storeEl.textContent = STORE_NAME;
+document.addEventListener('DOMContentLoaded', initializeApp);
 
-  // 席ID既存値の読み出し
-  seatId = localStorage.getItem('seatId') || null;
-  updateSeatLabel();
+function initializeApp() {
+  try {
+    setupStoreInfo();
+    loadSeatData();
+    bindEventHandlers();
+    startTimers();
+    setupCallResultModal();
+  } catch (error) {
+    console.error('App initialization failed:', error);
+    showToast('システムの初期化に失敗しました');
+  }
+}
 
-  // イベント
-  const setBtn = document.getElementById('btnSetSeat');
-  if (setBtn) setBtn.addEventListener('click', onSetSeat);
-  const callBtn = document.getElementById('btnCall');
-  if (callBtn) callBtn.addEventListener('click', onCallStaff);
-  // モーダル内のボタン（存在すればイベントを紐付け）
-  const confirmBtn = document.getElementById('confirmCall');
-  if (confirmBtn) confirmBtn.addEventListener('click', confirmCall);
-  const cancelBtn = document.getElementById('cancelCall');
-  if (cancelBtn) cancelBtn.addEventListener('click', closeCallModal);
-  const backdrop = document.querySelector('#callModal .modal__backdrop');
-  if (backdrop) backdrop.addEventListener('click', closeCallModal);
-  // 座席モーダル関連
-  const seatConfirm = document.getElementById('confirmSeat');
-  if (seatConfirm) seatConfirm.addEventListener('click', confirmSeat);
-  const seatCancel = document.getElementById('cancelSeat');
-  if (seatCancel) seatCancel.addEventListener('click', closeSeatModal);
-  const seatBackdrop = document.querySelector('#seatModal .modal__backdrop');
-  if (seatBackdrop) seatBackdrop.addEventListener('click', closeSeatModal);
-  // プルダウンを動的に生成
-  populateSeatOptions();
+function setupStoreInfo() {
+  const storeElement = document.getElementById('storeName');
+  if (storeElement) {
+    storeElement.textContent = CONFIG.STORE.NAME;
+  }
+}
 
-  // LO残時間のタイマー開始
-  startLoTimer();
+function loadSeatData() {
+  state.seatId = localStorage.getItem('seatId') || null;
+  updateSeatDisplay();
+}
 
-  // 現在時刻の表示
-  startClock();
+function bindEventHandlers() {
+  const handlers = [
+    { id: 'btnSetSeat', handler: openSeatModal },
+    { id: 'btnCall', handler: handleCallStaff },
+    { id: 'confirmCall', handler: confirmCall },
+    { id: 'cancelCall', handler: closeCallModal },
+    { id: 'confirmSeat', handler: confirmSeatSelection },
+    { id: 'cancelSeat', handler: closeSeatModal },
+    { id: 'closeCallResult', handler: closeCallResult },
+    { id: 'retryCall', handler: retryCall }
+  ];
 
-  // --- 新規: 呼び出し完了モーダル関連の初期化 ---
-  const closeResultBtn = document.getElementById('closeCallResult');
-  if (closeResultBtn) closeResultBtn.addEventListener('click', closeCallResult);
-  const resultBackdrop = document.querySelector('#callResultModal .modal__backdrop');
-  if (resultBackdrop) resultBackdrop.addEventListener('click', closeCallResult);
-  const retryBtn = document.getElementById('retryCall');
-  if (retryBtn) retryBtn.addEventListener('click', () => {
-    // 再試行は confirmCall を再実行（既に進行中なら無視）
-    if (!callInProgress) confirmCall();
+  handlers.forEach(({ id, handler }) => {
+    const element = document.getElementById(id);
+    if (element) element.addEventListener('click', handler);
   });
-});
 
-/* ===== 席ID設定 ===== */
-function onSetSeat() {
-  openSeatModal();
-}
-function updateSeatLabel() {
-  const el = document.getElementById('seatLabel');
-  if (el) el.textContent = `座席：${seatId || '未設定'}`;
+  // Backdrop handlers
+  bindBackdropHandlers();
+  populateSeatOptions();
 }
 
-/* ===== LO残時間の表示・通知 ===== */
-function startLoTimer() {
-  const label = document.getElementById('loLabel');
+function bindBackdropHandlers() {
+  const backdrops = [
+    { selector: '#callModal .modal__backdrop', handler: closeCallModal },
+    { selector: '#seatModal .modal__backdrop', handler: closeSeatModal },
+    { selector: '#callResultModal .modal__backdrop', handler: closeCallResult }
+  ];
 
-  // サーバーから LO 情報を取得して表示（UIは表示のみ、判定基準はサーバー）
-  const updateFromServer = async () => {
-    if (!label) return;
+  backdrops.forEach(({ selector, handler }) => {
+    const backdrop = document.querySelector(selector);
+    if (backdrop) backdrop.addEventListener('click', handler);
+  });
+}
+
+/* ===== 時刻・LO管理 ===== */
+function startTimers() {
+  try {
+    startClock();
+    startLoTimer();
+  } catch (error) {
+    console.error('タイマー初期化エラー:', error);
+  }
+}
+
+function startClock() {
+  const clockElement = document.getElementById('currentTime');
+  if (!clockElement) return;
+
+  const updateClock = () => {
     try {
-      const resp = await fetch(LO_API, { cache: 'no-store' });
-      if (!resp.ok) throw new Error('no server');
-      const j = await resp.json();
-      // 期待フォーマット例: { remainingMinutes: 90, loTime: "23:30", notify: false }
-      if (typeof j.remainingMinutes === 'number') {
-        const mins = Math.max(0, Math.floor(j.remainingMinutes));
-        const hrs = Math.floor(mins / 60);
-        const mm = String(mins % 60).padStart(2, '0');
-        label.textContent = `ラストオーダー（サーバー基準）まで：${hrs}時間${mm}分`;
-        // 通知はサーバーから指示があった場合にのみ表示（重複防止）
-        if (j.notify && !notifiedLO) {
-          notifiedLO = true;
-          showToast('ラストオーダー（サーバー基準）です');
-        }
-        return;
-      }
-      throw new Error('invalid payload');
-    } catch (e) {
-      // フォールバック：ローカル計算（既存ロジック）を短期的に表示
       const now = new Date();
-      const close = new Date(now);
-      close.setHours(STORE_CLOSE.hour % 24, STORE_CLOSE.minute, 0, 0);
-      if (STORE_CLOSE.hour === 24) close.setDate(close.getDate() + 1);
-      const lo = new Date(close.getTime() - LO_MINUS_MIN * 60 * 1000);
-      const remainMs = lo.getTime() - now.getTime();
-      if (remainMs <= 0) {
-        label.textContent = 'ラストオーダーまで：0分（LO到達）';
-        return;
-      }
-      const mins = Math.floor(remainMs / 1000 / 60);
-      const hrs = Math.floor(mins / 60);
-      const mm = String(mins % 60).padStart(2, '0');
-      label.textContent = `ラストオーダーまで：${hrs}時間${mm}分`;
+      const timeString = [
+        now.getHours(),
+        now.getMinutes(), 
+        now.getSeconds()
+      ].map(n => String(n).padStart(2, '0')).join(':');
+      
+      clockElement.textContent = timeString;
+      clockElement.setAttribute('datetime', now.toISOString());
+    } catch (error) {
+      console.error('時刻更新エラー:', error);
+      clockElement.textContent = '時刻エラー';
     }
   };
 
-  // 初回とポーリング
-  updateFromServer();
-  setInterval(updateFromServer, 15000);
+  updateClock();
+  state.timers.clock = setInterval(updateClock, 1000);
 }
 
-/* ===== スタッフ呼び出し（確認モーダル） ===== */
-function onCallStaff() {
-  if (!seatId) {
-    showToast('席IDを設定してください');
+function startLoTimer() {
+  const updateLO = async () => {
+    try {
+      await updateLOFromServer();
+    } catch (serverError) {
+      console.warn('サーバーからのLO取得失敗:', serverError);
+      try {
+        updateLOFromLocal();
+      } catch (localError) {
+        console.error('ローカルLO計算エラー:', localError);
+        const label = document.getElementById('loLabel');
+        if (label) label.textContent = 'LO計算エラー';
+      }
+    }
+  };
+
+  updateLO();
+  state.timers.loUpdate = setInterval(updateLO, CONFIG.API.POLLING_INTERVAL_MS);
+}
+
+async function updateLOFromServer() {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), CONFIG.API.TIMEOUT_MS);
+
+  try {
+    const response = await fetch(CONFIG.API.LO_ENDPOINT, { 
+      cache: 'no-store',
+      signal: controller.signal
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Server response: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    if (typeof data.remainingMinutes !== 'number') {
+      throw new Error('Invalid server response format');
+    }
+
+    updateLODisplay(data.remainingMinutes, 'サーバー基準');
+    
+    if (data.notify && !state.notifiedLO) {
+      state.notifiedLO = true;
+      showToast('ラストオーダー（サーバー基準）です');
+    }
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+function updateLOFromLocal() {
+  const now = new Date();
+  const closeTime = new Date(now);
+  closeTime.setHours(CONFIG.STORE.CLOSE_HOUR % 24, CONFIG.STORE.CLOSE_MINUTE, 0, 0);
+  
+  if (CONFIG.STORE.CLOSE_HOUR === 24) {
+    closeTime.setDate(closeTime.getDate() + 1);
+  }
+  
+  const loTime = new Date(closeTime.getTime() - CONFIG.STORE.LO_MINUS_MINUTES * 60 * 1000);
+  const remainingMs = loTime.getTime() - now.getTime();
+  const remainingMinutes = Math.max(0, Math.floor(remainingMs / 60000));
+  
+  updateLODisplay(remainingMinutes, 'ローカル基準');
+}
+
+function updateLODisplay(minutes, source) {
+  const label = document.getElementById('loLabel');
+  if (!label) return;
+
+  if (minutes <= 0) {
+    label.textContent = 'ラストオーダーまで：0分（LO到達）';
     return;
   }
-  const now = Date.now();
-  const elapsed = now - lastCallTs;
-  if (elapsed < COOLDOWN_MS) {
-    const wait = Math.ceil((COOLDOWN_MS - elapsed) / 1000);
-    showToast(`呼び出しはあと ${wait} 秒で再度可能です`);
-    return;
+
+  const hours = Math.floor(minutes / 60);
+  const mins = String(minutes % 60).padStart(2, '0');
+  label.textContent = `ラストオーダー（${source}）まで：${hours}時間${mins}分`;
+}
+
+/* ===== 座席管理 ===== */
+function updateSeatDisplay() {
+  try {
+    const seatLabel = document.getElementById('seatLabel');
+    if (seatLabel) {
+      const seatText = `座席：${state.seatId || '未設定'}`;
+      seatLabel.textContent = seatText;
+      seatLabel.setAttribute('aria-label', `現在の${seatText}`);
+    }
+  } catch (error) {
+    console.error('座席表示更新エラー:', error);
   }
-  openCallModal();
-}
-
-function openCallModal() {
-  const modal = document.getElementById('callModal');
-  if (!modal) return;
-  modal.hidden = false;
-  modal.setAttribute('aria-hidden', 'false');
-  // フォーカスを確認ボタンへ
-  const btn = document.getElementById('confirmCall');
-  if (btn) btn.focus();
-}
-
-function closeCallModal() {
-  const modal = document.getElementById('callModal');
-  if (!modal) return;
-  modal.hidden = true;
-  modal.setAttribute('aria-hidden', 'true');
-}
-
-/* ===== 座席選択モーダル ===== */
-function openSeatModal() {
-  const modal = document.getElementById('seatModal');
-  if (!modal) return;
-  modal.hidden = false;
-  modal.setAttribute('aria-hidden', 'false');
-  const sel = document.getElementById('seatSelect');
-  if (sel && seatId) sel.value = seatId;
-}
-
-function closeSeatModal() {
-  const modal = document.getElementById('seatModal');
-  if (!modal) return;
-  modal.hidden = true;
-  modal.setAttribute('aria-hidden', 'true');
 }
 
 function populateSeatOptions() {
-  const sel = document.getElementById('seatSelect');
-  if (!sel) return;
-  // クリア
-  sel.innerHTML = '';
-  // カウンター席 C-01 ～ C-10
-  const addOption = (value, label) => {
-    const opt = document.createElement('option');
-    opt.value = value;
-    opt.textContent = label;
-    sel.appendChild(opt);
-  };
-  addOption('', '選択してください');
-  for (let i = 1; i <= 10; i++) {
-    const v = `C-${String(i).padStart(2, '0')}`;
-    addOption(v, `カウンター席：${v}`);
-  }
-  // フロアの表記を英字-2桁フォーマットに統一（A=1F, B=2F 等）
-  for (let i = 1; i <= 5; i++) {
-    const v = `A-${String(i).padStart(2, '0')}`; // 1階 -> A-01..
-    addOption(v, `1階テーブル：${v}`);
-  }
-  for (let i = 1; i <= 15; i++) {
-    const v = `B-${String(i).padStart(2, '0')}`; // 2階 -> B-01..
-    addOption(v, `2階テーブル：${v}`);
+  try {
+    const select = document.getElementById('seatSelect');
+    if (!select) return;
+
+    // 既存選択肢をクリア
+    select.innerHTML = '';
+    
+    // デフォルトオプション
+    const defaultOption = new Option('選択してください', '');
+    defaultOption.disabled = true;
+    select.appendChild(defaultOption);
+
+    // 座席オプション生成
+    Object.values(CONFIG.SEAT.TYPES).forEach(({ prefix, count, label }) => {
+      const optgroup = document.createElement('optgroup');
+      optgroup.label = label;
+      
+      for (let i = 1; i <= count; i++) {
+        const value = `${prefix}-${String(i).padStart(2, '0')}`;
+        const option = new Option(`${label}：${value}`, value);
+        optgroup.appendChild(option);
+      }
+      
+      select.appendChild(optgroup);
+    });
+  } catch (error) {
+    console.error('座席オプション生成エラー:', error);
   }
 }
 
-function confirmSeat() {
-  const sel = document.getElementById('seatSelect');
-  if (!sel) return;
-  const val = sel.value;
-  if (!val) {
-    showToast('座席を選択してください');
+function openSeatModal() {
+  showModal('seatModal');
+  const select = document.getElementById('seatSelect');
+  if (select && state.seatId) {
+    select.value = state.seatId;
+  }
+}
+
+function closeSeatModal() {
+  hideModal('seatModal');
+}
+
+function confirmSeatSelection() {
+  try {
+    const select = document.getElementById('seatSelect');
+    if (!select) return;
+
+    const selectedSeat = select.value;
+    if (!selectedSeat) {
+      showToast('座席を選択してください');
+      return;
+    }
+
+    if (!validateSeatId(selectedSeat)) {
+      showToast('座席IDの形式が正しくありません');
+      return;
+    }
+
+    const normalizedSeat = selectedSeat.toUpperCase();
+    state.seatId = normalizedSeat;
+    
+    try {
+      localStorage.setItem('seatId', state.seatId);
+    } catch (storageError) {
+      console.error('座席ID保存エラー:', storageError);
+      showToast('座席情報の保存に失敗しました');
+    }
+    
+    updateSeatDisplay();
+    closeSeatModal();
+    showToast(`座席を設定しました：${state.seatId}`);
+    
+  } catch (error) {
+    console.error('座席設定エラー:', error);
+    showToast('座席設定中にエラーが発生しました');
+  }
+}
+
+function validateSeatId(seatId) {
+  return CONFIG.SEAT.REGEX.test(String(seatId).toUpperCase());
+}
+
+/* ===== スタッフ呼び出し ===== */
+function handleCallStaff() {
+  if (!state.seatId) {
+    showToast('席IDを設定してください');
     return;
   }
-  const normalized = String(val).toUpperCase();
-  if (!SEAT_REGEX.test(normalized)) {
-    showToast('座席IDは英字1文字-2桁の形式で指定してください（例 C-05）');
+
+  if (isInCooldown()) {
+    const remainingSeconds = getRemainingCooldownSeconds();
+    showToast(`呼び出しはあと ${remainingSeconds} 秒で再度可能です`);
     return;
   }
-  seatId = normalized;
-  localStorage.setItem('seatId', seatId);
-  updateSeatLabel();
-  closeSeatModal();
-  showToast(`座席を設定しました：${seatId}`);
+
+  showModal('callModal');
+}
+
+function isInCooldown() {
+  const elapsed = Date.now() - state.lastCallTs;
+  return elapsed < CONFIG.CALL.COOLDOWN_MS;
+}
+
+function getRemainingCooldownSeconds() {
+  const elapsed = Date.now() - state.lastCallTs;
+  const remaining = CONFIG.CALL.COOLDOWN_MS - elapsed;
+  return Math.ceil(remaining / 1000);
 }
 
 async function confirmCall() {
-  if (!seatId) {
-    showToast('座席IDを設定してください');
-    return;
-  }
-  // 連打・多重送信防止
-  if (callInProgress) return;
-  callInProgress = true;
-  // ボタン無効化
-  const confirmBtn = document.getElementById('confirmCall');
-  if (confirmBtn) confirmBtn.disabled = true;
-  closeCallModal();
+  if (!state.seatId || state.callInProgress) return;
 
-  /* 
-   補足：
-   - ここにあった実際のサーバー呼び出し（fetch(CALL_API...)）はコメントアウトしました。
-   - サーバー側で呼び出し成否を判定・通知する運用になる想定です。実運用では下記コメント内の fetch 処理を復元し、
-     成功/失敗に応じて openCallResult(..., { retry: false/true }) を呼び出してください。
-   - ここではフロントエンド側のみで「連打抑止（クールダウン）」を実装し、ローカル成功表示を行います。
-  */
-
-  /*
-  // --- 参考：実際の API 呼び出し（コメントアウト中） ---
+  state.callInProgress = true;
+  const confirmButton = document.getElementById('confirmCall');
+  
   try {
-    const resp = await fetch(CALL_API, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ seat: seatId })
-    });
-    if (!resp.ok) throw new Error('call failed');
-    // 成功時の処理
-    lastCallTs = Date.now();
-    setCallCooldown(true);
-    openCallResult(`スタッフを呼び出しました（座席：${seatId}）`, { retry: false });
-  } catch (e) {
-    console.error(e);
-    // 失敗時：再試行導線を表示する
-    openCallResult('呼び出しに失敗しました。再試行してください。', { retry: true });
+    setButtonState(confirmButton, true);
+    closeCallModal();
+
+    // 実際のAPI呼び出し処理（現在はコメントアウト）
+    /*
+    try {
+      await callStaffAPI(state.seatId);
+      state.lastCallTs = Date.now();
+      startCooldown();
+      showCallResult(`スタッフを呼び出しました（座席：${state.seatId}）`, false);
+    } catch (apiError) {
+      console.error('API呼び出しエラー:', apiError);
+      showCallResult('呼び出しに失敗しました。再試行してください。', true);
+      showToast('呼び出しに失敗しました');
+    }
+    */
+    
+    // ローカルデモ処理
+    await simulateCallDelay();
+    state.lastCallTs = Date.now();
+    startCooldown();
+    showCallResult(`スタッフを呼び出しました（座席：${state.seatId}）`, false);
+    
+  } catch (error) {
+    console.error('呼び出し処理エラー:', error);
+    showCallResult('呼び出し中にエラーが発生しました', true);
     showToast('呼び出しに失敗しました');
   } finally {
-    callInProgress = false;
-    if (confirmBtn) confirmBtn.disabled = false;
+    state.callInProgress = false;
+    setButtonState(confirmButton, false);
   }
-  // --- /参考 ---
-  */
-
-  // クライアント側のみの動作（連打抑止／クールダウン開始／ローカル成功表示）
-  lastCallTs = Date.now();
-  setCallCooldown(true);
-  openCallResult(`スタッフを呼び出しました（座席：${seatId}）`, { retry: false });
-
-  // フラグとボタン状態を戻す（処理は完了と見なす）
-  callInProgress = false;
-  if (confirmBtn) confirmBtn.disabled = false;
 }
 
-/* ===== 現在時刻表示 ===== */
-function startClock() {
-  const el = document.getElementById('currentTime');
-  if (!el) return;
-  const fmt = (n) => String(n).padStart(2, '0');
-  const tick = () => {
-    const d = new Date();
-    const hh = fmt(d.getHours());
-    const mm = fmt(d.getMinutes());
-    const ss = fmt(d.getSeconds());
-    el.textContent = `${hh}:${mm}:${ss}`;
-  };
-  tick();
-  setInterval(tick, 1000);
+// デモ用の遅延シミュレーション
+async function simulateCallDelay() {
+  return new Promise(resolve => setTimeout(resolve, 1000));
 }
 
-/* ===== トースト表示 ===== */
-/* ===== トースト表示（改善版） =====
-   仕様：
-   - 既存の showToast(message) 呼び出しはそのまま使える。
-   - TOAST_MODE によって挙動が変わる。
-     - 'overwrite' : 既に表示中でも即座にメッセージを置換してタイマーをリセット（スナックバー風）。
-     - 'queue'     : 既に表示中の場合は新着を保留（ただし複数来ても最新のみ保持）、現在の表示が消えたら保留中の最新を表示。
-*/
+// 実際のAPI呼び出し関数（実装時に使用）
+async function callStaffAPI(seatId) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), CONFIG.API.TIMEOUT_MS);
+
+  try {
+    const response = await fetch(CONFIG.API.CALL_ENDPOINT, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({ 
+        seat: seatId,
+        timestamp: new Date().toISOString()
+      }),
+      signal: controller.signal
+    });
+
+    if (!response.ok) {
+      throw new Error(`Call API failed: ${response.status}`);
+    }
+
+    return await response.json();
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+/* ===== モーダル管理 ===== */
+function showModal(modalId) {
+  const modal = document.getElementById(modalId);
+  if (!modal) return;
+
+  modal.hidden = false;
+  modal.setAttribute('aria-hidden', 'false');
+  
+  // フォーカス管理
+  const focusTarget = modal.querySelector('button, input, select');
+  if (focusTarget) focusTarget.focus();
+}
+
+function hideModal(modalId) {
+  const modal = document.getElementById(modalId);
+  if (!modal) return;
+
+  modal.hidden = true;
+  modal.setAttribute('aria-hidden', 'true');
+}
+
+function closeCallModal() {
+  hideModal('callModal');
+}
+
+function setupCallResultModal() {
+  // 初期化処理は既にbindEventHandlersで実行済み
+}
+
+function showCallResult(message, showRetry) {
+  const modal = document.getElementById('callResultModal');
+  const messageElement = document.getElementById('callResultMessage');
+  const retryButton = document.getElementById('retryCall');
+
+  if (!modal) return;
+
+  if (messageElement) messageElement.textContent = message;
+  if (retryButton) {
+    retryButton.hidden = !showRetry;
+    retryButton.disabled = false;
+  }
+
+  showModal('callResultModal');
+}
+
+function closeCallResult() {
+  const retryButton = document.getElementById('retryCall');
+  if (retryButton) {
+    retryButton.hidden = true;
+    retryButton.disabled = false;
+  }
+  hideModal('callResultModal');
+}
+
+function retryCall() {
+  if (!state.callInProgress) {
+    confirmCall();
+  }
+}
+
+/* ===== トースト表示システム ===== */
 function showToast(message) {
   const toast = document.getElementById('toast');
   if (!toast) return;
 
-  // 状態を保持するクロージャ変数（要素外で保持するためプロパティを利用）
-  if (!toast._tm) {
-    toast._tm = {
+  initializeToastState(toast);
+  
+  if (CONFIG.TOAST.MODE === 'overwrite') {
+    displayToast(toast, message);
+  } else {
+    queueToast(toast, message);
+  }
+}
+
+function initializeToastState(toast) {
+  if (!toast._state) {
+    toast._state = {
       visible: false,
       timeoutId: null,
-      pending: null // queue モード時に最後のメッセージを保持
+      pending: null
     };
   }
-  const st = toast._tm;
+}
 
-  const doShow = (msg) => {
-    toast.textContent = msg;
-    toast.classList.add('show');
-    st.visible = true;
-    // 既存タイマーがあればクリア
-    if (st.timeoutId) {
-      clearTimeout(st.timeoutId);
-      st.timeoutId = null;
+function displayToast(toast, message) {
+  const state = toast._state;
+  
+  toast.textContent = message;
+  toast.classList.add('show');
+  state.visible = true;
+
+  if (state.timeoutId) {
+    clearTimeout(state.timeoutId);
+  }
+
+  state.timeoutId = setTimeout(() => {
+    toast.classList.remove('show');
+    state.visible = false;
+    state.timeoutId = null;
+
+    if (CONFIG.TOAST.MODE === 'queue' && state.pending) {
+      const nextMessage = state.pending;
+      state.pending = null;
+      setTimeout(() => displayToast(toast, nextMessage), 120);
     }
-    st.timeoutId = setTimeout(() => {
-      toast.classList.remove('show');
-      st.visible = false;
-      st.timeoutId = null;
-      // queue モードなら保留中のメッセージを表示する
-      if (TOAST_MODE === 'queue' && st.pending) {
-        const next = st.pending;
-        st.pending = null;
-        // 少し遅延を入れて連続的な見た目を良くする（任意）
-        setTimeout(() => doShow(next), 120);
-      }
-    }, TOAST_DURATION_MS);
-  };
+  }, CONFIG.TOAST.DURATION_MS);
+}
 
-  if (TOAST_MODE === 'overwrite') {
-    // すぐ上書きしてタイマーを再スタート
-    doShow(message);
+function queueToast(toast, message) {
+  const state = toast._state;
+  
+  if (!state.visible) {
+    displayToast(toast, message);
   } else {
-    // queue モード
-    if (!st.visible) {
-      doShow(message);
-    } else {
-      // 表示中は pending を最新で置き換える（中間は破棄）
-      st.pending = message;
-    }
+    state.pending = message;
   }
 }
 
-/* ===== 呼び出し完了表示（中央モーダル） ===== */
-function openCallResult(message, opts = { retry: false }) {
-  const modal = document.getElementById('callResultModal');
-  const msg = document.getElementById('callResultMessage');
-  const retryBtn = document.getElementById('retryCall');
-  if (!modal) return;
-  if (msg) msg.textContent = message;
-  if (retryBtn) {
-    if (opts.retry) {
-      retryBtn.hidden = false;
-      retryBtn.disabled = false;
-    } else {
-      retryBtn.hidden = true;
-    }
-  }
-  modal.hidden = false;
-  modal.setAttribute('aria-hidden', 'false');
-  const btn = document.getElementById('closeCallResult');
-  if (btn) btn.focus();
-}
+/* ===== クリーンアップ ===== */
+window.addEventListener('beforeunload', () => {
+  if (state.timers.clock) clearInterval(state.timers.clock);
+  if (state.timers.loUpdate) clearInterval(state.timers.loUpdate);
+});
 
-function closeCallResult() {
-  const modal = document.getElementById('callResultModal');
-  if (!modal) return;
-  const retryBtn = document.getElementById('retryCall');
-  if (retryBtn) {
-    retryBtn.hidden = true;
-    retryBtn.disabled = false;
-  }
-  modal.hidden = true;
-  modal.setAttribute('aria-hidden', 'true');
-}
-
-function setCallCooldown(enable) {
-  const callBtn = document.getElementById('btnCall');
-  if (!callBtn) return;
-  if (enable) {
-    callBtn.disabled = true;
-    setTimeout(() => {
-      callBtn.disabled = false;
-    }, COOLDOWN_MS);
-  } else {
-    callBtn.disabled = false;
-  }
-}
-
-/* ===== 以前の showStickyToast はコール結果用に置き換えました（下部 toast は transient 用のまま維持） ===== */
+/* ===== 外部API（グローバル関数として公開） ===== */
+window.startClock = startClock;
+window.showToast = showToast;
