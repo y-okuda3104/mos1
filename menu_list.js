@@ -193,26 +193,13 @@ const menuManager = {
     return categories[index % 3];
   },
 
-  filterAndSortItems(keyword, category, sortOrder) {
-    let filtered = menuState.items.filter(item => {
+  filterItems(keyword, category) {
+    return menuState.items.filter(item => {
       const matchesCategory = !category || item.category === category;
       const matchesKeyword = !keyword || 
         item.name.toLowerCase().includes(keyword.toLowerCase());
       return matchesCategory && matchesKeyword;
     });
-
-    return this.sortItems(filtered, sortOrder);
-  },
-
-  sortItems(items, sortOrder) {
-    const sortFunctions = {
-      recommend: (a, b) => b.recommend - a.recommend,
-      category: (a, b) => a.category.localeCompare(b.category),
-      quick: (a, b) => a.quickOrder - b.quickOrder
-    };
-
-    const sortFn = sortFunctions[sortOrder] || sortFunctions.recommend;
-    return [...items].sort(sortFn);
   }
 };
 
@@ -340,10 +327,10 @@ const uiManager = {
 
     try {
       const keyword = this.getInputValue('searchInput');
-      const category = this.getSelectValue('categoryFilter');
-      const sort = this.getSelectValue('sortOrder', 'recommend');
+      const category = this.getActiveCategory();
 
-      const items = menuManager.filterAndSortItems(keyword, category, sort);
+      // 並び順機能を削除し、フィルターのみ適用
+      const items = menuManager.filterItems(keyword, category);
 
       container.innerHTML = '';
       
@@ -415,28 +402,55 @@ const uiManager = {
     return element ? String(element.value).trim() : '';
   },
 
-  getSelectValue(id, defaultValue = '') {
-    const element = document.getElementById(id);
-    return element ? element.value : defaultValue;
+  getActiveCategory() {
+    const activeTab = document.querySelector('.category-tab.active');
+    return activeTab ? activeTab.dataset.category : '';
   },
 
+  // populateCategories関数をタブ生成に変更
   populateCategories() {
-    const select = document.getElementById('categoryFilter');
-    if (!select) return;
+    const tabContainer = document.getElementById('categoryTabs');
+    if (!tabContainer) return;
     
     try {
-      select.innerHTML = '<option value="">すべてのカテゴリ</option>';
+      // 既存タブをクリア
+      tabContainer.innerHTML = '';
+      
+      // 「すべて」タブを追加
+      const allTab = document.createElement('button');
+      allTab.className = 'category-tab active';
+      allTab.textContent = 'すべて';
+      allTab.dataset.category = '';
+      allTab.addEventListener('click', () => this.selectCategory(allTab));
+      tabContainer.appendChild(allTab);
+      
+      // カテゴリタブを生成
       const categories = Array.from(new Set(menuState.items.map(item => item.category))).filter(Boolean);
       
       categories.forEach(category => {
-        const option = document.createElement('option');
-        option.value = category;
-        option.textContent = category;
-        select.appendChild(option);
+        const tab = document.createElement('button');
+        tab.className = 'category-tab';
+        tab.textContent = category;
+        tab.dataset.category = category;
+        tab.addEventListener('click', () => this.selectCategory(tab));
+        tabContainer.appendChild(tab);
       });
     } catch (error) {
-      console.error('カテゴリ生成エラー:', error);
+      console.error('カテゴリタブ生成エラー:', error);
     }
+  },
+
+  selectCategory(selectedTab) {
+    // 全タブから active クラスを削除
+    document.querySelectorAll('.category-tab').forEach(tab => {
+      tab.classList.remove('active');
+    });
+    
+    // 選択されたタブに active クラスを追加
+    selectedTab.classList.add('active');
+    
+    // メニューを再描画
+    this.renderMenu();
   },
 
   renderCart() {
@@ -546,18 +560,13 @@ const uiManager = {
 
   bindSearchHandlers() {
     const searchInput = document.getElementById('searchInput');
-    const categoryFilter = document.getElementById('categoryFilter');
-    const sortOrder = document.getElementById('sortOrder');
     
     if (searchInput) {
       searchInput.addEventListener('input', this.debounce(() => this.renderMenu(), 300));
     }
-    if (categoryFilter) {
-      categoryFilter.addEventListener('change', () => this.renderMenu());
-    }
-    if (sortOrder) {
-      sortOrder.addEventListener('change', () => this.renderMenu());
-    }
+    
+    // カテゴリフィルター・ソート関連のイベントハンドラーを削除
+    // タブのイベントハンドラーは populateCategories() 内で設定済み
   },
 
   bindCartHandlers() {
