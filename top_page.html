@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="description" content="みどり亭 居酒屋POS注文システム - 座席管理、メニュー注文、スタッフ呼び出し" />
+  <meta name="theme-color" content="#ff7f32" />
+  <title>みどり亭｜トップメニュー</title>
+  <link rel="stylesheet" href="top_menu.css" />
+</head>
+<body>
+  <!-- メインヘッダー：店舗情報・座席・時刻表示 -->
+  <header class="app-header" role="banner">
+    <div class="header-inner">
+      <div class="header-left">
+        <h1 id="storeName">みどり亭 本店</h1>
+        <div class="status" role="status" aria-live="polite">
+          <span id="seatLabel" aria-label="現在の座席">席：未設定</span>
+          <span id="loLabel" aria-label="ラストオーダーまでの時間">ラストオーダーまで：計算中...</span>
+          <button id="btnSetSeat" class="secondary" type="button" 
+                  aria-describedby="seatLabel">
+            座席変更
+          </button>
+        </div>
+      </div>
+      <div class="header-right">
+        <time id="currentTime" class="current-time" 
+              aria-live="polite" role="timer" 
+              aria-label="現在時刻">
+          --:--:--
+        </time>
+      </div>
+    </div>
+  </header>
+    </html>
