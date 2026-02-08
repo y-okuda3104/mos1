@@ -450,13 +450,6 @@ function handleCheckout() {
 
   // 会計状態を更新
   startPaymentProcess();
-
-  // 背景のコンテンツを操作不可にする
-  const main = document.querySelector('main');
-  if (main) {
-    main.style.pointerEvents = 'none';
-    main.style.opacity = '0.5';
-  }
 }
 
 /**

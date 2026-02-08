@@ -606,12 +606,6 @@ const uiManager = {
           if (AppState && typeof AppState.startPaymentProcess === 'function') {
             AppState.startPaymentProcess();
           }
-          // 背景のコンテンツを操作不可にする
-          const main = document.querySelector('main');
-          if (main) {
-            main.style.pointerEvents = 'none';
-            main.style.opacity = '0.5';
-          }
         });
         // 会計中は disabled
         checkoutBtn.disabled = !AppState.canOrder;
