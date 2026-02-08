@@ -24,6 +24,8 @@
       <div class="header-right">
         <a href="top_menu.html" class="top-link" 
            aria-label="トップメニューへ戻る">TOPへ</a>
+        <button id="btnCheckout" class="secondary" type="button"
+                aria-label="お会計へ進む">お会計</button>
         <time id="currentTime" class="current-time" 
               aria-live="polite" role="timer">--:--:--</time>
       </div>
@@ -90,6 +92,7 @@
   </aside>
   
   <!-- スクリプト読み込み -->
+  <script src="shared-state.js"></script>
   <script src="api.js"></script>
   <script src="top_menu.js"></script>
   <script src="menu_list.js"></script>

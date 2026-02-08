@@ -259,29 +259,26 @@ const cartManager = {
 /* ===== 注文管理 ===== */
 const orderManager = {
   confirmOrder() {
-    if (cartManager.isEmpty()) {
+    if (Object.keys(AppState.cart).length === 0) {
       this.showMessage('カートが空です');
       return;
     }
 
-    const timestamp = Date.now();
-    
-    Object.entries(menuState.cart).forEach(([itemId, quantity]) => {
-      const item = menuState.items.find(i => i.id === itemId) || 
-        { id: itemId, name: itemId, price: 0 };
-      
-      menuState.orders.push({
-        id: item.id,
-        name: item.name,
-        price: item.price || 0,
-        qty: quantity || 0,
-        delivered: false,
-        ts: timestamp
-      });
-    });
+    if (!AppState.canOrder) {
+      this.showMessage('会計中のため注文できません');
+      return;
+    }
 
-    dataManager.saveOrders();
-    cartManager.clear();
+    // AppState を使用して注文を送信
+    const orderId = submitOrder();
+    
+    if (!orderId) {
+      this.showMessage('注文処理に失敗しました');
+      return;
+    }
+
+    // UIの更新
+    uiManager.renderCart();
     uiManager.renderOrderStatus();
     uiManager.hideCartDetails();
     
@@ -346,37 +343,48 @@ const uiManager = {
   },
 
   renderMenuItem(container, item) {
-    const card = document.createElement('div');
-    card.className = 'menuItem' + (item.soldOut ? ' soldOut' : '');
+    // AppState の soldOutItems をチェック
+    const isSoldOut = AppState.soldOutItems.includes(item.id) || item.soldOut;
     
-    const imgHtml = item.imageUrl ? 
-      `<img src="${utils.escapeHtml(item.imageUrl)}" alt="${utils.escapeHtml(item.name)}" loading="lazy">` : '';
+    const card = document.createElement('div');
+    card.className = 'menuItem' + (isSoldOut ? ' soldOut' : '');
+    
+    const imgHtml = item.image ? 
+      `<div style="font-size:32px;text-align:center">${item.image}</div>` : '';
     
     const priceDisplay = item.price === 0 ? '¥0（無料）' : `¥${item.price}`;
+    const isOrderDisabled = !AppState.canOrder || isSoldOut;
     
     card.innerHTML = `
       ${imgHtml}
       <div class="name">${utils.escapeHtml(item.name)}</div>
       <div class="price">${priceDisplay}</div>
-      <button ${item.soldOut ? 'disabled' : ''} 
+      ${isSoldOut ? '<div class="soldout-badge">売切</div>' : ''}
+      <button ${isOrderDisabled ? 'disabled' : ''} 
               data-id="${utils.escapeHtml(item.id)}"
-              aria-label="${item.soldOut ? '売切' : item.name + 'をカートに追加'}">
-        ${item.soldOut ? '売切' : '追加'}
+              aria-label="${isSoldOut ? '売切' : (AppState.canOrder ? item.name + 'をカートに追加' : '会計中のため操作できません')}">
+        ${isSoldOut ? '売切' : '追加'}
       </button>
     `;
     
     container.appendChild(card);
 
     const btn = card.querySelector('button[data-id]');
-    if (btn && !item.soldOut) {
+    if (btn && !isSoldOut && AppState.canOrder) {
       btn.addEventListener('click', () => this.handleAddToCart(item.id));
     }
   },
 
   handleAddToCart(itemId) {
     try {
-      cartManager.addItem(itemId);
-      // フィードバック効果
+      // AppState を使用してカートに追加
+      if (!addToCart(itemId, 1)) {
+        orderManager.showMessage('会計中のため追加できません');
+        return;
+      }
+      
+      // UIの更新
+      this.renderCart();
       this.showAddToCartFeedback(itemId);
     } catch (error) {
       console.error('カート追加エラー:', error);
@@ -477,13 +485,13 @@ const uiManager = {
     listEl.innerHTML = '';
     const totalPrice = cartManager.getTotalPrice();
 
-    if (cartManager.isEmpty()) {
+    if (Object.keys(AppState.cart).length === 0) {
       listEl.innerHTML = '<li class="empty-cart">カートは空です</li>';
       totalEl.textContent = '合計: ¥0';
       return;
     }
 
-    Object.entries(menuState.cart).forEach(([itemId, quantity]) => {
+    Object.entries(AppState.cart).forEach(([itemId, quantity]) => {
       const item = menuState.items.find(i => i.id === itemId) || 
         { id: itemId, name: itemId, price: 0 };
       
@@ -491,7 +499,7 @@ const uiManager = {
       listEl.appendChild(li);
     });
 
-    totalEl.textContent = `合計: ¥${totalPrice}`;
+    totalEl.textContent = `合計: ¥${getCartTotal()}`;
   },
 
   createCartItem(item, quantity) {
@@ -553,6 +561,18 @@ const uiManager = {
       this.bindSearchHandlers();
       this.bindCartHandlers();
       this.bindOrderHandlers();
+      
+      // 「お会計」ボタン
+      const checkoutBtn = document.getElementById('btnCheckout');
+      if (checkoutBtn) {
+        checkoutBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          startPaymentProcess();
+          window.location.href = 'checkout.html';
+        });
+        // 会計中は disabled
+        checkoutBtn.disabled = !AppState.canOrder;
+      }
     } catch (error) {
       console.error('イベントハンドラー設定エラー:', error);
     }
@@ -623,11 +643,18 @@ const uiManager = {
 /* ===== 初期化 ===== */
 document.addEventListener('DOMContentLoaded', async () => {
   try {
-    dataManager.loadSeatData();
-    dataManager.loadCart();
-    dataManager.loadOrders();
-    
+    // QRスキャン済みかチェック
+    if (!AppState.qrScanned || !AppState.seatId) {
+      window.location.href = 'qr_entry.html';
+      return;
+    }
+
+    // メニューロード＆初期化
     await menuManager.loadMenu();
+    
+    // 売切アイテムを AppState に設定
+    const soldOut = await API.getSoldOutItems();
+    menuState.soldOutItems = soldOut;
     
     uiManager.bindEventHandlers();
     uiManager.renderCart();

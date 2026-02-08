@@ -85,12 +85,10 @@ function loadSeatData() {
 
 function bindEventHandlers() {
   const handlers = [
-    { id: 'btnSetSeat', handler: openSeatModal },
     { id: 'btnCall', handler: handleCallStaff },
+    { id: 'btnCheckout', handler: handleCheckout },
     { id: 'confirmCall', handler: confirmCall },
     { id: 'cancelCall', handler: closeCallModal },
-    { id: 'confirmSeat', handler: confirmSeatSelection },
-    { id: 'cancelSeat', handler: closeSeatModal },
     { id: 'closeCallResult', handler: closeCallResult },
     { id: 'retryCall', handler: retryCall }
   ];
@@ -430,6 +428,20 @@ async function callStaffAPI(seatId) {
   } finally {
     clearTimeout(timeoutId);
   }
+}
+
+/* ===== 会計処理 ===== */
+function handleCheckout() {
+  if (!state.seatId) {
+    showToast('席IDを設定してください');
+    return;
+  }
+
+  // 会計処理準備中状態を設定
+  startPaymentProcess();
+  
+  // 会計画面へ遷移
+  window.location.href = 'checkout.html';
 }
 
 /* ===== モーダル管理 ===== */

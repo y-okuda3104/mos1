@@ -9,6 +9,13 @@
   <link rel="stylesheet" href="top_menu.css" />
 </head>
 <body>
+  <!-- 初期化用スクリプト（QR判定してリダイレクト） -->
+  <script>
+    // QRスキャン済みかチェック（座席が設定されていない場合はQR画面へ）
+    if (!localStorage.getItem('seatId')) {
+      window.location.href = 'qr_entry.html';
+    }
+  </script>
   <!-- メインヘッダー：店舗情報・座席・時刻表示 -->
   <header class="app-header" role="banner">
     <div class="header-inner">
@@ -17,10 +24,6 @@
         <div class="status" role="status" aria-live="polite">
           <span id="seatLabel" aria-label="現在の座席">席：未設定</span>
           <span id="loLabel" aria-label="ラストオーダーまでの時間">ラストオーダーまで：計算中...</span>
-          <button id="btnSetSeat" class="secondary" type="button" 
-                  aria-describedby="seatLabel">
-            座席変更
-          </button>
         </div>
       </div>
       <div class="header-right">
@@ -60,6 +63,15 @@
         <h2 class="card__title">スタッフ呼び出し</h2>
         <p class="card__desc" id="call-desc">
           スタッフを呼び出します
+        </p>
+      </button>
+
+      <button class="card" id="btnCheckout" type="button" 
+              aria-describedby="checkout-desc">
+        <div class="card__icon" aria-hidden="true">💳</div>
+        <h2 class="card__title">お会計</h2>
+        <p class="card__desc" id="checkout-desc">
+          お支払い手続きへ進みます
         </p>
       </button>
     </nav>
@@ -130,6 +142,8 @@
     <small>&copy; 2024 みどり亭 POS システム</small>
   </footer>
 
+  <script src="shared-state.js"></script>
+  <script src="api.js"></script>
   <script src="top_menu.js" defer></script>
 </body>
 </html>
