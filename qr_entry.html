@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="みどり亭 QRコード読み込み - 座席確認">
+  <meta name="theme-color" content="#ff7f32">
+  <title>座席確認 - みどり亭</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #ff7f32 0%, #ff9c52 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #333;
+    }
+    .container {
+      background: white;
+      border-radius: 12px;
+      padding: 2rem;
+      max-width: 500px;
+      width: 90%;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+      text-align: center;
+    }
+    h1 {
+      font-size: 1.8rem;
+      margin-bottom: 1rem;
+      color: #ff7f32;
+    }
+    .description {
+      color: #666;
+      margin-bottom: 2rem;
+      font-size: 0.95rem;
+    }
+    .form-group {
+      margin-bottom: 1.5rem;
+      text-align: left;
+    }
+    label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+    }
+    input, select {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 1rem;
+      font-family: inherit;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: #ff7f32;
+      box-shadow: 0 0 0 3px rgba(255, 127, 50, 0.1);
+    }
+    .button-group {
+      display: flex;
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+    button {
+      flex: 1;
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 6px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .btn-primary {
+      background: #ff7f32;
+      color: white;
+    }
+    .btn-primary:hover {
+      background: #e67e22;
+      transform: translateY(-2px);
+    }
+    .btn-secondary {
+      background: #f0f0f0;
+      color: #333;
+    }
+    .btn-secondary:hover {
+      background: #e0e0e0;
+    }
+    .error {
+      color: #d32f2f;
+      margin-top: 1rem;
+      font-size: 0.9rem;
+      display: none;
+    }
+    .info {
+      background: #e3f2fd;
+      border-left: 4px solid #2196F3;
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+      border-radius: 4px;
+      text-align: left;
+    }
+    .info h3 {
+      color: #1976D2;
+      margin-bottom: 0.5rem;
+    }
+    .info p {
+      color: #555;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔔 座席確認</h1>
+    <p class="description">座席を選択またはQRコードをスキャンしてください</p>
+    
+    <div class="info">
+      <h3>デモモード</h3>
+      <p>QRコード入力: SEAT:C-01 ～ SEAT:C-10 (カウンター席)</p>
+    </div>
+
+    <form id="qrForm">
+      <div class="form-group">
+        <label for="qrInput">QRコード/座席ID入力:</label>
+        <input type="text" id="qrInput" placeholder="QRコードをスキャンまたは SEAT:C-05 と入力">
+      </div>
+
+      <div class="form-group">
+        <label for="seatSelect">または座席を選択:</label>
+        <select id="seatSelect">
+          <option value="">-- 座席を選択 --</option>
+          <optgroup label="カウンター席">
+            <option value="C-01">C-01</option>
+            <option value="C-02">C-02</option>
+            <option value="C-03">C-03</option>
+            <option value="C-04">C-04</option>
+            <option value="C-05">C-05</option>
+            <option value="C-06">C-06</option>
+            <option value="C-07">C-07</option>
+            <option value="C-08">C-08</option>
+            <option value="C-09">C-09</option>
+            <option value="C-10">C-10</option>
+          </optgroup>
+        </select>
+      </div>
+
+      <div class="button-group">
+        <button type="submit" class="btn-primary">進む</button>
+        <button type="button" class="btn-secondary" id="demoBtn">デモ開始</button>
+      </div>
+    </form>
+
+    <div class="error" id="errorMsg"></div>
+  </div>
+
+  <script src="shared-state.js"></script>
+  <script src="api.js"></script>
+  <script>
+    document.getElementById('qrForm').addEventListener('submit', handleQRSubmit);
+    document.getElementById('demoBtn').addEventListener('click', startDemo);
+    document.getElementById('qrInput').addEventListener('change', handleQRInput);
+
+    async function handleQRSubmit(e) {
+      e.preventDefault();
+      const qrInput = document.getElementById('qrInput').value.trim();
+      const seatSelect = document.getElementById('seatSelect').value;
+      const seatId = qrInput || seatSelect;
+
+      if (!seatId) {
+        showError('座席を選択してください');
+        return;
+      }
+
+      await proceedWithSeat(seatId);
+    }
+
+    async function handleQRInput(e) {
+      const input = e.target.value.trim();
+      if (input) {
+        document.getElementById('seatSelect').value = '';
+      }
+    }
+
+    function startDemo() {
+      proceedWithSeat('C-05');
+    }
+
+    async function proceedWithSeat(seatId) {
+      try {
+        // QRコード検証（形式：SEAT:C-05 または C-05）
+        let qrData = seatId;
+        if (!seatId.includes('SEAT:')) {
+          qrData = `SEAT:${seatId}`;
+        }
+
+        const result = await API.validateQRCode(qrData);
+        if (!result.valid) {
+          showError('無効な座席情報です');
+          return;
+        }
+
+        // 座席IDを設定
+        setSeatId(result.seatId);
+        
+        // トップメニューへ遷移
+        window.location.href = 'top_menu.html';
+      } catch (error) {
+        console.error('QR処理エラー:', error);
+        showError('処理中にエラーが発生しました');
+      }
+    }
+
+    function showError(message) {
+      const errorEl = document.getElementById('errorMsg');
+      errorEl.textContent = message;
+      errorEl.style.display = 'block';
+      setTimeout(() => {
+        errorEl.style.display = 'none';
+      }, 5000);
+    }
+  </script>
+</body>
+</html>

@@ -366,24 +366,9 @@ async function confirmCall() {
     setButtonState(confirmButton, true);
     closeCallModal();
 
-    // 実際のAPI呼び出し処理（現在はコメントアウト）
-    /*
-    try {
-      await callStaffAPI(state.seatId);
-      state.lastCallTs = Date.now();
-      startCooldown();
-      showCallResult(`スタッフを呼び出しました（座席：${state.seatId}）`, false);
-    } catch (apiError) {
-      console.error('API呼び出しエラー:', apiError);
-      showCallResult('呼び出しに失敗しました。再試行してください。', true);
-      showToast('呼び出しに失敗しました');
-    }
-    */
-    
-    // ローカルデモ処理
-    await simulateCallDelay();
+    // API.callStaff() を呼び出す（デモ版では成功を返す）
+    const result = await API.callStaff(state.seatId);
     state.lastCallTs = Date.now();
-    startCooldown();
     showCallResult(`スタッフを呼び出しました（座席：${state.seatId}）`, false);
     
   } catch (error) {

@@ -141,9 +141,9 @@ const menuManager = {
     menuState.isLoading = true;
     
     try {
-      const response = await this.fetchMenuFromAPI();
-      menuState.items = response.items && response.items.length ? 
-        response.items : this.generateDummyMenu();
+      // API.getMenuItems() を使用してメニュー取得
+      const items = await API.getMenuItems(MENU_CONFIG.STORE_ID);
+      menuState.items = items && items.length ? items : this.generateDummyMenu();
     } catch (error) {
       console.warn('Menu API unavailable, using dummy menu:', error);
       menuState.items = this.generateDummyMenu();
@@ -151,8 +151,9 @@ const menuManager = {
       menuState.isLoading = false;
     }
 
-    uiManager.renderMenu();
+    // メニュー表示の初期化
     uiManager.populateCategories();
+    uiManager.renderMenu();
   },
 
   async fetchMenuFromAPI() {
@@ -173,33 +174,47 @@ const menuManager = {
   },
 
   generateDummyMenu() {
-    return Array.from({ length: MENU_CONFIG.DUMMY_MENU_COUNT }, (_, i) => {
-      const idx = i + 1;
-      return {
-        id: `m${String(idx).padStart(2, '0')}`,
-        name: `居酒屋メニュー ${idx}`,
-        price: (idx % 5 === 0) ? 0 : 500 + (idx * 50),
-        imageUrl: '',
-        category: this.getCategoryByIndex(idx),
-        recommend: Math.floor(Math.random() * 100),
-        quickOrder: Math.floor(Math.random() * 10),
-        soldOut: false
-      };
-    });
+    return [
+      { id: 'm01', name: '枝豆', category: '冷菜', price: 390, image: '🥬' },
+      { id: 'm02', name: '唐揚げ', category: '揚げ物', price: 590, image: '🍗' },
+      { id: 'm03', name: 'だし巻き卵', category: '卵料理', price: 450, image: '🥚', soldOut: true },
+      { id: 'm04', name: 'もつ煮込み', category: '煮込み', price: 520, image: '🍲' },
+      { id: 'm05', name: 'チーズ唐揚げ', category: '揚げ物', price: 650, image: '🧀' },
+      { id: 'm06', name: 'ポテトサラダ', category: '冷菜', price: 420, image: '🥔' },
+      { id: 'm07', name: '牛タン塩焼き', category: '焼き物', price: 880, image: '🥩', soldOut: true },
+      { id: 'm08', name: 'イカ塩辛', category: '冷菜', price: 480, image: '🦑' },
+      { id: 'm09', name: '豚足揚げ', category: '揚げ物', price: 520, image: '🍖' },
+      { id: 'm10', name: '明太バター', category: '冷菜', price: 540, image: '🧈' },
+      { id: 'm11', name: '焼鳥盛合わせ', category: '焼き物', price: 720, image: '🔥' },
+      { id: 'm12', name: 'お絞り', category: '取り皿', price: 0, image: '🧻' }
+    ];
   },
 
   getCategoryByIndex(index) {
-    const categories = ['酒肴', '串焼き', '揚げ物'];
-    return categories[index % 3];
+    const categories = ['冷菜', '揚げ物', '卵料理', '煮込み', '焼き物', '取り皿'];
+    return categories[index % categories.length];
   },
 
   filterItems(keyword, category) {
-    return menuState.items.filter(item => {
+    let filtered = menuState.items.filter(item => {
       const matchesCategory = !category || item.category === category;
       const matchesKeyword = !keyword || 
         item.name.toLowerCase().includes(keyword.toLowerCase());
       return matchesCategory && matchesKeyword;
     });
+
+    // ソート処理（デフォルト：名前順）
+    const sortBy = document.querySelector('[data-sort]')?.dataset.sort || 'name';
+    if (sortBy === 'price') {
+      filtered.sort((a, b) => a.price - b.price);
+    } else if (sortBy === 'price-desc') {
+      filtered.sort((a, b) => b.price - a.price);
+    } else {
+      // デフォルト：名前順
+      filtered.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+    }
+
+    return filtered;
   }
 };
 
@@ -596,12 +611,7 @@ const uiManager = {
     }
   },
 
-  bindOrderHandlers() {
-    const confirmBtn = document.getElementById('confirmOrder');
-    if (confirmBtn) {
-      confirmBtn.addEventListener('click', () => orderManager.confirmOrder());
-    }
-  },
+  bindOrderHandlers() {\n    const confirmBtn = document.getElementById('confirmOrder');\n    if (confirmBtn) {\n      confirmBtn.addEventListener('click', () => orderManager.confirmOrder());\n    }\n  },
 
   toggleCartDetails() {
     const details = document.getElementById('miniCartDetails');
