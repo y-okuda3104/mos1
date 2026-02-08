@@ -451,8 +451,15 @@ function handleCheckout() {
   // 会計状態を更新
   startPaymentProcess();
 
-  // 会計準備中の状態で留め置く（遷移しない）
-  showToast('会計準備中です。スタッフをお呼びください');
+  // 3秒後に結果画面へ遷移
+  setTimeout(() => {
+    if (modal) {
+      modal.setAttribute('hidden', '');
+      modal.setAttribute('aria-hidden', 'true');
+    }
+    // checkout.html へ遷移
+    window.location.href = 'checkout.html';
+  }, 3000);
 }
 
 /**

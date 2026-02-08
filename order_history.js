@@ -33,6 +33,20 @@
     loadOrders();
     bindEvents();
     render();
+    
+    // メニュー情報をロード（注文表示時に使用）
+    if (typeof API !== 'undefined' && API.getMenuItems) {
+      API.getMenuItems().then(items => {
+        if (typeof AppState !== 'undefined') {
+          AppState.menuItems = items || [];
+        }
+        // 再描画してアイテム情報を反映
+        render();
+      }).catch(e => {
+        console.warn('Menu load failed:', e);
+      });
+    }
+    
     if (typeof startClock === 'function') {
       try { startClock(); } catch(e){ /* ignore */ }
     }
@@ -105,46 +119,84 @@
       return;
     }
 
-    list.forEach((o, idx) => {
+    list.forEach((order, idx) => {
       const card = document.createElement('div');
       card.className = 'order-card';
 
-      const info = document.createElement('div');
-      info.className = 'order-info';
-      const meta = document.createElement('div');
-      meta.className = 'order-meta';
-      const name = document.createElement('div');
-      name.className = 'order-name';
-      name.textContent = o.name || o.id || '不明';
-      const qty = document.createElement('div');
-      qty.className = 'order-qty';
-      qty.textContent = `x${o.qty || 0}  —  ¥${(o.price||0) * (o.qty||0)}`;
-      const ts = document.createElement('div');
-      ts.className = 'order-ts';
-      ts.textContent = fmtTs(o.ts) + (o.ts ? ` (${new Date(Number(o.ts)).toLocaleDateString()})` : '');
-      meta.appendChild(name);
-      meta.appendChild(qty);
-      meta.appendChild(ts);
-      info.appendChild(meta);
+      // 注文ヘッダー
+      const header = document.createElement('div');
+      header.className = 'order-header';
+      header.style.cssText = 'border-bottom: 1px solid #ddd; padding-bottom: 8px; margin-bottom: 8px;';
+      
+      const timestamp = document.createElement('div');
+      timestamp.className = 'order-ts';
+      timestamp.style.cssText = 'font-size: 12px; color: #999; margin-bottom: 4px;';
+      timestamp.textContent = order.timestamp ? new Date(order.timestamp).toLocaleString('ja-JP') : '時刻不明';
+      
+      const totalInfo = document.createElement('div');
+      totalInfo.style.cssText = 'font-weight: 600; color: #ff7f32;';
+      totalInfo.textContent = `合計：¥${(order.total || 0).toLocaleString()}`;
+      
+      header.appendChild(timestamp);
+      header.appendChild(totalInfo);
+      card.appendChild(header);
 
+      // 注文内容（メニューごとに展開）
+      const itemsContainer = document.createElement('div');
+      itemsContainer.className = 'order-items';
+      itemsContainer.style.cssText = 'margin-bottom: 12px;';
+      
+      if (order.items && typeof order.items === 'object') {
+        // items は { m01: 2, m04: 1 } のような形式
+        const items = (typeof AppState !== 'undefined' && AppState?.menuItems) || [];
+        Object.entries(order.items).forEach(([itemId, qty]) => {
+          const itemData = items.find && items.find(m => m.id === itemId);
+          const itemName = itemData?.name || itemId;
+          const itemPrice = itemData?.price || 0;
+          
+          const itemRow = document.createElement('div');
+          itemRow.style.cssText = 'display: flex; justify-content: space-between; padding: 4px 0; font-size: 14px;';
+          itemRow.innerHTML = `
+            <span>${itemName}</span>
+            <span style="text-align: right;">×${qty} = ¥${(itemPrice * qty).toLocaleString()}</span>
+          `;
+          itemsContainer.appendChild(itemRow);
+        });
+      } else if (order.name) {
+        // 古い形式の場合（互換性）
+        const itemRow = document.createElement('div');
+        itemRow.style.cssText = 'display: flex; justify-content: space-between; padding: 4px 0; font-size: 14px;';
+        itemRow.innerHTML = `
+          <span>${order.name}</span>
+          <span style="text-align: right;">×${order.qty || 0} = ¥${((order.price || 0) * (order.qty || 0)).toLocaleString()}</span>
+        `;
+        itemsContainer.appendChild(itemRow);
+      }
+      card.appendChild(itemsContainer);
+
+      // アクション
       const actions = document.createElement('div');
       actions.className = 'order-actions';
+      actions.style.cssText = 'display: flex; gap: 8px; flex-wrap: wrap;';
 
       const tag = document.createElement('div');
-      tag.className = 'tag ' + (o.delivered ? 'delivered' : 'pending');
-      tag.textContent = o.delivered ? '配膳済み' : '未配膳';
+      tag.className = 'tag ' + (order.delivered ? 'delivered' : 'pending');
+      tag.style.cssText = 'padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;';
+      tag.textContent = order.delivered ? '配膳済み' : '未配膳';
       actions.appendChild(tag);
 
       const toggleBtn = document.createElement('button');
       toggleBtn.className = 'primary';
-      toggleBtn.textContent = o.delivered ? '未配膳に戻す' : '配膳済みにする';
+      toggleBtn.style.cssText = 'padding: 6px 12px; font-size: 12px;';
+      toggleBtn.textContent = order.delivered ? '未配膳に戻す' : '配膳済みにする';
       toggleBtn.addEventListener('click', () => {
-        toggleDelivered(idx, o.id);
+        toggleDelivered(idx, order.id);
       });
       actions.appendChild(toggleBtn);
 
       const removeBtn = document.createElement('button');
       removeBtn.className = 'secondary';
+      removeBtn.style.cssText = 'padding: 6px 12px; font-size: 12px;';
       removeBtn.textContent = '削除';
       removeBtn.addEventListener('click', () => {
         if (!confirm('この注文を削除しますか？')) return;
@@ -152,7 +204,6 @@
       });
       actions.appendChild(removeBtn);
 
-      card.appendChild(info);
       card.appendChild(actions);
       elOrdersList.appendChild(card);
     });

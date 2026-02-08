@@ -157,8 +157,10 @@ const menuManager = {
       utils.setLoadingState(false);
     }
 
+    // UI更新順序：1) メニュー, 2) カテゴリ, 3) ソートボタン
     uiManager.renderMenu();
     uiManager.populateCategories();
+    // ソートボタンはbindEventHandlers後に生成（イベントリスナー自体の初期化のため）
   },
 
   async fetchMenuFromAPI() {
@@ -192,51 +194,36 @@ const menuManager = {
     }
     
     return filtered;
+      return matchesCategory && matchesKeyword;
+    });
   }
 };
 
 /* ===== カート管理 ===== */
 const cartManager = {
   addItem(itemId) {
-    AppState.cart[itemId] = (AppState.cart[itemId] || 0) + 1;
-    menuState.cart[itemId] = AppState.cart[itemId];
-    if (AppState.saveCart && typeof AppState.saveCart === 'function') {
-      AppState.saveCart();
-    }
+    menuState.cart[itemId] = (menuState.cart[itemId] || 0) + 1;
     this.saveAndRender();
   },
 
   removeItem(itemId) {
-    delete AppState.cart[itemId];
     delete menuState.cart[itemId];
-    if (AppState.saveCart && typeof AppState.saveCart === 'function') {
-      AppState.saveCart();
-    }
     this.saveAndRender();
   },
 
   increaseQuantity(itemId) {
-    AppState.cart[itemId] = (AppState.cart[itemId] || 0) + 1;
-    menuState.cart[itemId] = AppState.cart[itemId];
-    if (AppState.saveCart && typeof AppState.saveCart === 'function') {
-      AppState.saveCart();
-    }
+    menuState.cart[itemId] = (menuState.cart[itemId] || 0) + 1;
     this.saveAndRender();
   },
 
   decreaseQuantity(itemId) {
-    const currentQty = AppState.cart[itemId] || 0;
+    const currentQty = menuState.cart[itemId] || 0;
     if (currentQty <= 1) {
-      delete AppState.cart[itemId];
-      delete menuState.cart[itemId];
+      this.removeItem(itemId);
     } else {
-      AppState.cart[itemId] = currentQty - 1;
-      menuState.cart[itemId] = AppState.cart[itemId];
+      menuState.cart[itemId] = currentQty - 1;
+      this.saveAndRender();
     }
-    if (AppState.saveCart && typeof AppState.saveCart === 'function') {
-      AppState.saveCart();
-    }
-    this.saveAndRender();
   },
 
   getTotalItems() {
@@ -255,11 +242,7 @@ const cartManager = {
   },
 
   clear() {
-    AppState.cart = {};
     menuState.cart = {};
-    if (AppState.saveCart && typeof AppState.saveCart === 'function') {
-      AppState.saveCart();
-    }
     this.saveAndRender();
   },
 
@@ -282,30 +265,12 @@ const orderManager = {
       return;
     }
 
-    // 注文をAppState.ordersに追加
-    const order = {
-      id: 'order_' + Date.now(),
-      timestamp: new Date().toISOString(),
-      items: { ...AppState.cart },
-      total: AppState.getCartTotal(),
-      status: 'pending',
-      delivered: false,
-      qty: Object.values(AppState.cart).reduce((sum, qty) => sum + qty, 0)
-    };
-
-    AppState.orders.push(order);
-    menuState.orders.push(order);
+    // AppState を使用して注文を送信
+    const orderId = submitOrder();
     
-    // AppState.ordersを保存
-    if (AppState.saveOrders && typeof AppState.saveOrders === 'function') {
-      AppState.saveOrders();
-    }
-
-    // カートをクリア
-    AppState.cart = {};
-    menuState.cart = {};
-    if (AppState.saveCart && typeof AppState.saveCart === 'function') {
-      AppState.saveCart();
+    if (!orderId) {
+      this.showMessage('注文処理に失敗しました');
+      return;
     }
 
     // UIの更新
@@ -410,14 +375,9 @@ const uiManager = {
   handleAddToCart(itemId) {
     try {
       // AppState を使用してカートに追加
-      AppState.cart[itemId] = (AppState.cart[itemId] || 0) + 1;
-      
-      // menuState も同期
-      menuState.cart[itemId] = AppState.cart[itemId];
-      
-      // AppState のカートを保存
-      if (AppState.saveCart && typeof AppState.saveCart === 'function') {
-        AppState.saveCart();
+      if (!addToCart(itemId, 1)) {
+        orderManager.showMessage('会計中のため追加できません');
+        return;
       }
       
       // UIの更新
@@ -510,9 +470,7 @@ const uiManager = {
   updateCartSummary() {
     const summaryCount = document.getElementById('cartCount');
     if (summaryCount) {
-      // AppState.cartから合計を計算
-      const totalItems = Object.values(AppState.cart).reduce((sum, qty) => sum + (qty || 0), 0);
-      summaryCount.textContent = String(totalItems);
+      summaryCount.textContent = String(cartManager.getTotalItems());
     }
   },
 
@@ -522,7 +480,7 @@ const uiManager = {
     if (!listEl || !totalEl) return;
 
     listEl.innerHTML = '';
-    const totalPrice = AppState.getCartTotal();
+    const totalPrice = cartManager.getTotalPrice();
 
     if (Object.keys(AppState.cart).length === 0) {
       listEl.innerHTML = '<li class="empty-cart">カートは空です</li>';
@@ -538,7 +496,7 @@ const uiManager = {
       listEl.appendChild(li);
     });
 
-    totalEl.textContent = `合計: ¥${totalPrice.toLocaleString()}`;
+    totalEl.textContent = `合計: ¥${getCartTotal()}`;
   },
 
   createCartItem(item, quantity) {
@@ -620,6 +578,9 @@ const uiManager = {
         // 会計中は disabled
         checkoutBtn.disabled = !AppState.canOrder;
       }
+      
+      // ソートボタンを生成
+      this.createSortButtons();
     } catch (error) {
       console.error('イベントハンドラー設定エラー:', error);
     }
@@ -631,9 +592,6 @@ const uiManager = {
     if (searchInput) {
       searchInput.addEventListener('input', this.debounce(() => this.renderMenu(), 300));
     }
-    
-    // ソートボタンを動的に生成
-    this.createSortButtons();
   },
 
   createSortButtons() {
@@ -742,6 +700,7 @@ const uiManager = {
 
 /* ===== 初期化 ===== */
 document.addEventListener('DOMContentLoaded', async () => {
+  try {
   try {
     // メニューロード＆初期化
     await menuManager.loadMenu();

@@ -91,31 +91,9 @@
     </div>
   </aside>
   
-  <!-- 会計準備中モーダル -->
-  <div id="paymentPreparingModal" class="modal" hidden aria-hidden="true">
-    <div class="modal__backdrop"></div>
-    <div class="modal__dialog" role="dialog" aria-modal="true" 
-         aria-labelledby="paymentTitle">
-      <h3 id="paymentTitle">会計処理中</h3>
-      <p>お会計を準備しています...</p>
-      <div style="text-align: center; margin: 20px 0;">
-        <div style="font-size: 48px; animation: pulse 2s infinite;">💳</div>
-        <div style="margin-top: 12px; font-size: 14px; color: #666;">
-          処理中です。しばらくお待ちください。
-        </div>
-      </div>
-    </div>
-  </div>
-  
   <!-- スクリプト読み込み -->
   <script src="shared-state.js"></script>
   <script src="api.js"></script>
   <script src="menu_list.js"></script>
-  <style>
-    @keyframes pulse {
-      0%, 100% { transform: scale(1); opacity: 1; }
-      50% { transform: scale(1.1); opacity: 0.8; }
-    }
-  </style>
 </body>
 </html>

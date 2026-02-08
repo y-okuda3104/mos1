@@ -7,40 +7,30 @@
   <meta name="theme-color" content="#ff7f32" />
   <title>みどり亭</title>
   <link rel="stylesheet" href="top_menu.css" />
-  <style>
-    body {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      background: linear-gradient(135deg, #ff7f32 0%, #ff6b00 100%);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      margin: 0;
+  <script>
+    // QRスキャン済みかチェック
+    if (!localStorage.getItem('seatId')) {
+      window.location.href = 'qr_entry.html';
     }
-    .loading {
-      text-align: center;
-      color: white;
-    }
-    .loading h1 {
-      font-size: 32px;
-      margin-bottom: 20px;
-    }
-    .loading p {
-      font-size: 16px;
-      opacity: 0.9;
-    }
-  </style>
+  </script>
 </head>
 <body>
-  <div class="loading">
-    <h1>🏪 みどり亭</h1>
-    <p>入店手続き中...</p>
-  </div>
-
+  <!-- メインヘッダー -->
+  <header class="app-header" role="banner">
+    <div class="header-inner">
+      <div class="header-left">
+        <h1 id="storeName">みどり亭 本店</h1>
+      </div>
+    </div>
+  </header>
+  
+  <main class="container" role="main">
+    <p>ログイン中...</p>
+  </main>
+  
   <script src="shared-state.js"></script>
   <script>
-    // デフォルト座席を設定して、top_menu.html へ遷移
-    AppState.setSeatId('C-05');
+    // リダイレクト
     window.location.href = 'top_menu.html';
   </script>
 </body>
