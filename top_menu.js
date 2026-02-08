@@ -451,15 +451,12 @@ function handleCheckout() {
   // 会計状態を更新
   startPaymentProcess();
 
-  // 3秒後に結果画面へ遷移
-  setTimeout(() => {
-    if (modal) {
-      modal.setAttribute('hidden', '');
-      modal.setAttribute('aria-hidden', 'true');
-    }
-    // checkout.html へ遷移
-    window.location.href = 'checkout.html';
-  }, 3000);
+  // 背景のコンテンツを操作不可にする
+  const main = document.querySelector('main');
+  if (main) {
+    main.style.pointerEvents = 'none';
+    main.style.opacity = '0.5';
+  }
 }
 
 /**
