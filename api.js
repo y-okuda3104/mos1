@@ -280,8 +280,8 @@ async function getSoldOutItems() {
   if (API_CONFIG.USE_MOCK) {
     return new Promise(resolve => {
       setTimeout(() => {
-        // 0円メニュー（m12, m13）を除いて、3つのメニューを売切れ表示
-        // m01（ねぎま）、m04（唐揚げ）、m10（牛タン塩焼き）を売切れ設定
+        // デモ用：0円メニュー以外から3つを売り切れに
+        // m01: ねぎま, m04: 唐揚げ, m10: 牛タン塩焼き を売り切れに
         resolve(['m01', 'm04', 'm10']);
       }, 200);
     });

@@ -194,8 +194,6 @@ const menuManager = {
     }
     
     return filtered;
-      return matchesCategory && matchesKeyword;
-    });
   }
 };
 
@@ -470,7 +468,9 @@ const uiManager = {
   updateCartSummary() {
     const summaryCount = document.getElementById('cartCount');
     if (summaryCount) {
-      summaryCount.textContent = String(cartManager.getTotalItems());
+      // AppState.cart から直接計算
+      const totalItems = Object.values(AppState.cart).reduce((sum, qty) => sum + (qty || 0), 0);
+      summaryCount.textContent = String(totalItems);
     }
   },
 
@@ -701,14 +701,12 @@ const uiManager = {
 /* ===== 初期化 ===== */
 document.addEventListener('DOMContentLoaded', async () => {
   try {
-  try {
     // メニューロード＆初期化
     await menuManager.loadMenu();
     
     // 売切アイテムを AppState に設定
     const soldOut = await API.getSoldOutItems();
-    menuState.soldOutItems = soldOut;
-    AppState.soldOutItems = soldOut;  // AppState にも設定
+    AppState.soldOutItems = soldOut;
     
     uiManager.bindEventHandlers();
     uiManager.renderCart();
