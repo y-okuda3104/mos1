@@ -79,7 +79,8 @@ function setupStoreInfo() {
 }
 
 function loadSeatData() {
-  state.seatId = localStorage.getItem('seatId') || null;
+  // AppState から座席情報を取得（shared-state.js で初期化済み）
+  state.seatId = AppState.seatId || localStorage.getItem('seatId') || null;
   updateSeatDisplay();
 }
 
@@ -342,7 +343,10 @@ function handleCallStaff() {
     return;
   }
 
-  showModal('callModal');
+  // デモなので、確認モーダルを表示せずに直接呼び出し成功画面を表示
+  state.lastCallTs = Date.now();
+  showCallResult(`座席${state.seatId}のスタッフを呼び出しました`, false);
+  showToast('スタッフを呼び出しました');
 }
 
 function isInCooldown() {
@@ -366,16 +370,29 @@ async function confirmCall() {
     setButtonState(confirmButton, true);
     closeCallModal();
 
-    // デモモード：実際には呼び出さず、成功画面を表示
-    showToast('スタッフへ通知しました');
+    // 実際のAPI呼び出し処理（現在はコメントアウト）
+    /*
+    try {
+      await callStaffAPI(state.seatId);
+      state.lastCallTs = Date.now();
+      startCooldown();
+      showCallResult(`スタッフを呼び出しました（座席：${state.seatId}）`, false);
+    } catch (apiError) {
+      console.error('API呼び出しエラー:', apiError);
+      showCallResult('呼び出しに失敗しました。再試行してください。', true);
+      showToast('呼び出しに失敗しました');
+    }
+    */
     
-    // 即座に成功結果を表示（再試行ボタンなし）
+    // ローカルデモ処理
+    await simulateCallDelay();
     state.lastCallTs = Date.now();
-    showCallResult('スタッフを呼び出しました', false);
+    startCooldown();
+    showCallResult(`スタッフを呼び出しました（座席：${state.seatId}）`, false);
     
   } catch (error) {
     console.error('呼び出し処理エラー:', error);
-    showCallResult('スタッフを呼び出しました', false);
+    showCallResult('呼び出し中にエラーが発生しました', true);
     showToast('呼び出しに失敗しました');
   } finally {
     state.callInProgress = false;
@@ -424,11 +441,44 @@ function handleCheckout() {
     return;
   }
 
-  // 会計処理準備中状態を設定
+  // 会計準備中モーダルを表示
+  const modal = document.getElementById('paymentPreparingModal');
+  if (modal) {
+    modal.removeAttribute('hidden');
+    modal.removeAttribute('aria-hidden');
+  }
+
+  // 会計状態を更新
   startPaymentProcess();
-  
-  // 会計画面へ遷移
-  window.location.href = 'checkout.html';
+
+  // 3秒後に結果画面へ遷移
+  setTimeout(() => {
+    if (modal) {
+      modal.setAttribute('hidden', '');
+      modal.setAttribute('aria-hidden', 'true');
+    }
+    // checkout.html へ遷移
+    window.location.href = 'checkout.html';
+  }, 3000);
+}
+
+/**
+ * 支払い処理を開始（AppState経由）
+ * @function
+ */
+function startPaymentProcess() {
+  try {
+    if (AppState && typeof AppState.startPaymentProcess === 'function') {
+      AppState.startPaymentProcess();
+    } else {
+      console.warn('AppState.startPaymentProcess not available');
+      // フォールバック
+      AppState.paymentStatus = 'preparing';
+      AppState.canOrder = false;
+    }
+  } catch (error) {
+    console.error('Error starting payment process:', error);
+  }
 }
 
 /* ===== モーダル管理 ===== */
@@ -474,11 +524,6 @@ function showCallResult(message, showRetry) {
   }
 
   showModal('callResultModal');
-  
-  // 3秒後に自動的にモーダルを閉じる
-  setTimeout(() => {
-    hideModal('callResultModal');
-  }, 3000);
 }
 
 function closeCallResult() {

@@ -1,187 +1,247 @@
 /**
- * グローバルアプリケーション状態管理
- * 全ページで共有する状態を一元管理
+ * グローバル状態管理システム
+ * 
+ * アプリケーション全体で使用される共有状態を管理
+ * localStorage と メモリ内状態の連携
+ * 
+ * @version 2.1.0
  */
 
+/* ===== グローバル状態オブジェクト ===== */
 const AppState = {
-  // 座席・認証情報
-  seatId: localStorage.getItem('seatId') || null,
-  qrScanned: !!localStorage.getItem('seatId'),
-  
-  // メニュー・カート情報
+  // 座席管理
+  seatId: null,
+  qrScanned: false,
+
+  // メニュー・注文
   menuItems: [],
   cart: {},
-  soldOutItems: [],
-  
-  // 注文・配膳情報
   orders: [],
-  paymentStatus: 'idle', // idle | processing | completed
+  paymentStatus: 'idle', // idle | preparing | completed
+
+  // 制御フラグ
   canOrder: true,
-  
-  // 初期化
-  init() {
-    if (this.seatId) {
-      this.loadCart();
-      this.loadOrders();
-    }
+  soldOutItems: [],
+
+  // UI状態
+  lastCallTime: null,
+  callInProgress: false,
+
+  // メソッド
+  setSeatId: function(seatId) {
+    return setSeatId(seatId);
   },
-  
-  // 座席設定
-  setSeatId(seatId) {
-    this.seatId = seatId;
-    this.qrScanned = true;
-    localStorage.setItem('seatId', seatId);
-    this.loadCart();
-    this.loadOrders();
+  saveCart: function() {
+    return saveCart();
   },
-  
-  // カート操作
-  addToCart(itemId, quantity = 1) {
-    if (!this.seatId) return false;
-    this.cart[itemId] = (this.cart[itemId] || 0) + quantity;
-    this.saveCart();
-    return true;
+  saveOrders: function() {
+    return saveOrders();
   },
-  
-  removeFromCart(itemId) {
-    if (!this.seatId) return false;
-    delete this.cart[itemId];
-    this.saveCart();
-    return true;
+  clearCart: function() {
+    return clearCart();
   },
-  
-  getCartTotal() {
-    let total = 0;
-    for (const itemId in this.cart) {
-      const item = this.menuItems.find(i => i.id === itemId);
-      if (item) {
-        total += item.price * this.cart[itemId];
-      }
-    }
-    return total;
+  getCartTotal: function() {
+    return getCartTotal();
   },
-  
-  getCartItemCount() {
-    return Object.values(this.cart).reduce((sum, qty) => sum + qty, 0);
+  startPaymentProcess: function() {
+    return startPaymentProcess();
   },
-  
-  // カート永続化
-  saveCart() {
-    if (!this.seatId) return;
-    localStorage.setItem(`cart_${this.seatId}`, JSON.stringify(this.cart));
-  },
-  
-  loadCart() {
-    if (!this.seatId) return;
-    const saved = localStorage.getItem(`cart_${this.seatId}`);
-    this.cart = saved ? JSON.parse(saved) : {};
-  },
-  
-  clearCart() {
-    this.cart = {};
-    this.saveCart();
-  },
-  
-  // 注文操作
-  submitOrder(items) {
-    if (!this.seatId) return false;
-    const order = {
-      id: `order_${Date.now()}`,
-      seatId: this.seatId,
-      items: items,
-      total: this.getCartTotal(),
-      timestamp: new Date().toISOString(),
-      status: 'pending'
-    };
-    this.orders.push(order);
-    this.saveOrders();
-    return true;
-  },
-  
-  // 注文永続化
-  saveOrders() {
-    if (!this.seatId) return;
-    localStorage.setItem(`orders_${this.seatId}`, JSON.stringify(this.orders));
-  },
-  
-  loadOrders() {
-    if (!this.seatId) return;
-    const saved = localStorage.getItem(`orders_${this.seatId}`);
-    this.orders = saved ? JSON.parse(saved) : [];
-  },
-  
-  // 支払い処理
-  startPaymentProcess() {
-    this.paymentStatus = 'processing';
-    this.canOrder = false;
-    localStorage.setItem(`paymentStatus_${this.seatId}`, 'processing');
-  },
-  
-  completePayment() {
-    this.paymentStatus = 'completed';
-    localStorage.setItem(`paymentStatus_${this.seatId}`, 'completed');
-  },
-  
-  resetPaymentStatus() {
-    this.paymentStatus = 'idle';
-    this.canOrder = true;
-    if (this.seatId) {
-      localStorage.removeItem(`paymentStatus_${this.seatId}`);
-    }
-  },
-  
-  // 売切り情報
-  markAsSoldOut(itemId) {
-    if (!this.soldOutItems.includes(itemId)) {
-      this.soldOutItems.push(itemId);
-    }
-  },
-  
-  isSoldOut(itemId) {
-    return this.soldOutItems.includes(itemId);
+  completePayment: function() {
+    return completePayment();
   }
 };
 
-// グローバルヘルパー関数
+/* ===== 初期化 ===== */
+function initializeAppState() {
+  // localStorage から座席IDを復元
+  const savedSeatId = localStorage.getItem('seatId');
+  if (savedSeatId) {
+    AppState.seatId = savedSeatId;
+    AppState.qrScanned = true;
+  } else {
+    // デフォルト座席を初期設定（デモ用）
+    const defaultSeat = 'C-05';
+    setSeatId(defaultSeat);
+  }
+
+  // localStorage からカート・注文を復元
+  loadCartAndOrders();
+
+  // 支払いステータスを復元
+  const savedPaymentStatus = localStorage.getItem(`paymentStatus_${AppState.seatId}`);
+  if (savedPaymentStatus) {
+    AppState.paymentStatus = savedPaymentStatus;
+    updateOrderingCapability();
+  }
+}
+
+/* ===== 座席管理 ===== */
+function setSeatId(seatId) {
+  const normalized = normalizeSeatId(seatId);
+  if (!normalized) {
+    console.error('Invalid seat ID:', seatId);
+    return false;
+  }
+
+  AppState.seatId = normalized;
+  AppState.qrScanned = true;
+  localStorage.setItem('seatId', normalized);
+
+  // 座席変更時はカート・注文を再ロード
+  loadCartAndOrders();
+
+  return true;
+}
+
+function getCurrentSeatId() {
+  return AppState.seatId || 'C-05';
+}
+
+function normalizeSeatId(input) {
+  if (!input) return null;
+  const normalized = String(input).trim().toUpperCase();
+  const match = normalized.match(/^([A-Z])[-\s]?(\d{1,2})$/);
+  if (!match) return null;
+  return `${match[1]}-${String(parseInt(match[2], 10)).padStart(2, '0')}`;
+}
+
+/* ===== カート・注文管理 ===== */
+function loadCartAndOrders() {
+  const seatId = AppState.seatId || 'C-05';
+
+  // カート読み込み
+  const cartKey = `cart_${seatId}`;
+  const savedCart = localStorage.getItem(cartKey);
+  AppState.cart = savedCart ? JSON.parse(savedCart) : {};
+
+  // 注文履歴読み込み
+  const ordersKey = `orders_${seatId}`;
+  const savedOrders = localStorage.getItem(ordersKey);
+  AppState.orders = savedOrders ? JSON.parse(savedOrders) : [];
+}
+
+function saveCart() {
+  const seatId = AppState.seatId || 'C-05';
+  const cartKey = `cart_${seatId}`;
+  localStorage.setItem(cartKey, JSON.stringify(AppState.cart));
+}
+
+function saveOrders() {
+  const seatId = AppState.seatId || 'C-05';
+  const ordersKey = `orders_${seatId}`;
+  localStorage.setItem(ordersKey, JSON.stringify(AppState.orders));
+}
+
 function addToCart(itemId, quantity = 1) {
-  return AppState.addToCart(itemId, quantity);
+  if (!AppState.canOrder) {
+    console.warn('Cannot add to cart during checkout');
+    return false;
+  }
+
+  if (!AppState.cart[itemId]) {
+    AppState.cart[itemId] = 0;
+  }
+  AppState.cart[itemId] += quantity;
+  saveCart();
+  return true;
 }
 
 function removeFromCart(itemId) {
-  return AppState.removeFromCart(itemId);
+  delete AppState.cart[itemId];
+  saveCart();
+}
+
+function clearCart() {
+  AppState.cart = {};
+  saveCart();
 }
 
 function getCartTotal() {
-  return AppState.getCartTotal();
+  const items = AppState.menuItems;
+  return Object.entries(AppState.cart).reduce((total, [itemId, quantity]) => {
+    const item = items.find(m => m.id === itemId);
+    return total + (item ? item.price * quantity : 0);
+  }, 0);
 }
 
-function getCartItemCount() {
-  return AppState.getCartItemCount();
-}
-
-function submitOrder() {
-  const items = Object.keys(AppState.cart);
-  if (items.length === 0) return null;
-  
-  const result = AppState.submitOrder(items);
-  if (result) {
-    AppState.clearCart();
-    return true;
-  }
-  return false;
-}
-
+/* ===== 支払い管理 ===== */
 function startPaymentProcess() {
-  AppState.startPaymentProcess();
+  AppState.paymentStatus = 'preparing';
+  AppState.canOrder = false;
+  updatePaymentStatusStorage();
 }
 
 function completePayment() {
-  AppState.completePayment();
+  AppState.paymentStatus = 'completed';
+  AppState.canOrder = false;
+  updatePaymentStatusStorage();
 }
 
-function resetPaymentStatus() {
-  AppState.resetPaymentStatus();
+function updatePaymentStatusStorage() {
+  const seatId = AppState.seatId || 'C-05';
+  const paymentStatusKey = `paymentStatus_${seatId}`;
+  localStorage.setItem(paymentStatusKey, AppState.paymentStatus);
 }
 
-// 初期化
-AppState.init();
+function isPaymentInProgress() {
+  return AppState.paymentStatus === 'preparing' || AppState.paymentStatus === 'completed';
+}
+
+function updateOrderingCapability() {
+  AppState.canOrder = AppState.paymentStatus === 'idle';
+}
+
+/* ===== 売切管理 ===== */
+function markAsSoldOut(itemId) {
+  if (!AppState.soldOutItems.includes(itemId)) {
+    AppState.soldOutItems.push(itemId);
+  }
+  localStorage.setItem('soldOutItems', JSON.stringify(AppState.soldOutItems));
+}
+
+function loadSoldOutItems() {
+  const saved = localStorage.getItem('soldOutItems');
+  AppState.soldOutItems = saved ? JSON.parse(saved) : [];
+}
+
+/* ===== スタッフ呼び出し ===== */
+function recordStaffCall() {
+  AppState.lastCallTime = new Date().toISOString();
+  AppState.callInProgress = false;
+
+  // 呼び出し履歴の記録（デモ用）
+  const seatId = AppState.seatId || 'C-05';
+  const callLogKey = `callLog_${seatId}`;
+  const callLog = JSON.parse(localStorage.getItem(callLogKey) || '[]');
+  callLog.push({
+    timestamp: AppState.lastCallTime,
+    seat: seatId
+  });
+  localStorage.setItem(callLogKey, JSON.stringify(callLog));
+}
+
+/* ===== 初期化実行 ===== */
+document.addEventListener('DOMContentLoaded', () => {
+  if (!window.AppStateInitialized) {
+    initializeAppState();
+    loadSoldOutItems();
+    window.AppStateInitialized = true;
+  }
+});
+
+// 即座初期化（スクリプト読込タイミングの対応）
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    if (!window.AppStateInitialized) {
+      initializeAppState();
+      loadSoldOutItems();
+      window.AppStateInitialized = true;
+    }
+  });
+} else {
+  if (!window.AppStateInitialized) {
+    initializeAppState();
+    loadSoldOutItems();
+    window.AppStateInitialized = true;
+  }
+}

@@ -1,245 +1,221 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="description" content="QRコード入力画面">
-  <meta name="theme-color" content="#ff7f32">
-  <title>QRコード入力 - みどり亭</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="description" content="みどり亭 QRコード読込" />
+  <meta name="theme-color" content="#ff7f32" />
+  <title>みどり亭｜QRコード読込</title>
   <style>
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
     }
-    
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 20px;
     }
-    
-    .container {
+
+    .qr-container {
       background: white;
       border-radius: 16px;
       box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+      padding: 40px 20px;
       max-width: 400px;
-      width: 100%;
-      padding: 40px;
+      width: 90%;
       text-align: center;
     }
-    
-    h1 {
-      font-size: 24px;
+
+    .qr-header {
+      margin-bottom: 30px;
+    }
+
+    .qr-header h1 {
+      font-size: 28px;
+      font-weight: 700;
       color: #333;
       margin-bottom: 10px;
     }
-    
-    .subtitle {
-      color: #666;
-      margin-bottom: 30px;
+
+    .qr-header p {
       font-size: 14px;
-    }
-    
-    .input-group {
-      margin: 20px 0;
-    }
-    
-    label {
-      display: block;
-      font-weight: bold;
-      color: #333;
-      margin-bottom: 8px;
-      text-align: left;
-      font-size: 14px;
-    }
-    
-    input[type="text"] {
-      width: 100%;
-      padding: 12px;
-      border: 2px solid #ddd;
-      border-radius: 8px;
-      font-size: 16px;
-      transition: border-color 0.3s;
-    }
-    
-    input[type="text"]:focus {
-      outline: none;
-      border-color: #ff7f32;
-    }
-    
-    input::placeholder {
-      color: #bbb;
-    }
-    
-    button {
-      width: 100%;
-      padding: 12px;
-      margin: 10px 0;
-      border: none;
-      border-radius: 8px;
-      font-size: 16px;
-      font-weight: bold;
-      cursor: pointer;
-      transition: all 0.3s;
-    }
-    
-    .btn-primary {
-      background: #ff7f32;
-      color: white;
-    }
-    
-    .btn-primary:hover {
-      background: #ff6b00;
-      transform: translateY(-2px);
-      box-shadow: 0 5px 15px rgba(255, 127, 50, 0.4);
-    }
-    
-    .btn-secondary {
-      background: #eee;
-      color: #333;
-    }
-    
-    .btn-secondary:hover {
-      background: #ddd;
-    }
-    
-    .divider {
-      margin: 20px 0;
-      color: #999;
-      font-size: 14px;
-    }
-    
-    .info-text {
-      background: #f0f0f0;
-      padding: 12px;
-      border-radius: 8px;
-      margin-top: 20px;
-      font-size: 12px;
       color: #666;
       line-height: 1.6;
     }
-    
-    .error {
-      background: #fee;
-      color: #c00;
+
+    .qr-input-group {
+      margin: 30px 0;
+    }
+
+    .qr-input {
+      width: 100%;
+      padding: 12px 16px;
+      font-size: 16px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      transition: border-color 0.3s;
+    }
+
+    .qr-input:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .button-group {
+      display: flex;
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 12px 24px;
+      font-size: 16px;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-primary:active {
+      transform: translateY(0);
+    }
+
+    .btn-secondary {
+      background: #f0f0f0;
+      color: #333;
+    }
+
+    .btn-secondary:hover {
+      background: #e0e0e0;
+    }
+
+    .qr-result {
+      margin-top: 20px;
       padding: 12px;
       border-radius: 8px;
-      margin: 10px 0;
+      font-size: 14px;
       display: none;
     }
-    
-    .error.show {
+
+    .qr-result.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
       display: block;
     }
-    
-    .logo {
-      font-size: 48px;
-      margin-bottom: 10px;
+
+    .qr-result.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+      display: block;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #333;
+      color: white;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 14px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      z-index: 1000;
+    }
+
+    .toast.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .demo-note {
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 1px solid #eee;
+      font-size: 12px;
+      color: #999;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #667eea;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="logo">🍶</div>
-    <h1>居酒屋みどり亭</h1>
-    <p class="subtitle">入店手続き</p>
-    
-    <div class="input-group">
-      <label for="qrInput">QRコードを読み込む</label>
-      <input type="text" id="qrInput" placeholder="QRコードを読み込んでください" autofocus>
+  <div class="qr-container">
+    <div class="qr-header">
+      <h1>🏪 みどり亭</h1>
+      <p>QRコードでご入店</p>
     </div>
-    
-    <button class="btn-primary" id="submitBtn">入店開始</button>
-    
-    <div class="divider">またはマニュアル入力</div>
-    
-    <div class="input-group">
-      <label for="seatInput">座席番号を入力</label>
-      <input type="text" id="seatInput" placeholder="例：C-05">
+
+    <div class="qr-input-group">
+      <input
+        type="text"
+        id="qrInput"
+        class="qr-input"
+        placeholder="QRコードをスキャン（またはEnter）"
+        autocomplete="off"
+        aria-label="QRコード入力欄"
+      />
     </div>
-    
-    <button class="btn-secondary" id="manualBtn">座席番号で入店</button>
-    
-    <div class="error" id="errorMsg"></div>
-    
-    <div class="info-text">
-      <strong>使用例（テスト用）:</strong><br>
-      QRコード欄に「SEAT:C-05」と入力してください
+
+    <div id="qrResult" class="qr-result" role="alert"></div>
+
+    <div class="button-group">
+      <button id="scanButton" class="btn btn-primary" type="button">
+        スキャン
+      </button>
+      <button id="demoButton" class="btn btn-secondary" type="button">
+        デモで続行
+      </button>
+    </div>
+
+    <div class="demo-note">
+      ℹ️ デモモード： QRコード不要でデフォルト座席（C-05）で進行
     </div>
   </div>
-  
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
   <script src="shared-state.js"></script>
   <script src="api.js"></script>
-  <script>
-    const qrInput = document.getElementById('qrInput');
-    const seatInput = document.getElementById('seatInput');
-    const submitBtn = document.getElementById('submitBtn');
-    const manualBtn = document.getElementById('manualBtn');
-    const errorMsg = document.getElementById('errorMsg');
-    
-    // QRコード自動送信（キー入力で完了を検出）
-    qrInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
-        submitQR();
-      }
-    });
-    
-    submitBtn.addEventListener('click', submitQR);
-    manualBtn.addEventListener('click', submitManual);
-    
-    async function submitQR() {
-      const qrCode = qrInput.value.trim();
-      if (!qrCode) {
-        showError('QRコードを入力してください');
-        return;
-      }
-      
-      try {
-        const result = await API.validateQRCode(qrCode);
-        if (result.valid && result.seatId) {
-          AppState.setSeatId(result.seatId);
-          window.location.href = 'top_menu.html';
-        } else {
-          showError('無効なQRコードです');
-        }
-      } catch (error) {
-        console.error('QR validation error:', error);
-        showError('コード読み込みエラーが発生しました');
-      }
-    }
-    
-    function submitManual() {
-      const seat = seatInput.value.trim();
-      if (!seat) {
-        showError('座席番号を入力してください');
-        return;
-      }
-      
-      // 座席番号をノーマライズ (C-05 または C05 など)
-      const normalized = seat.toUpperCase().replace(/\s+/g, '');
-      const match = normalized.match(/^([A-Z])-?(\d{1,2})$/);
-      
-      if (match) {
-        const seatId = `${match[1]}-${String(parseInt(match[2], 10)).padStart(2, '0')}`;
-        AppState.setSeatId(seatId);
-        window.location.href = 'top_menu.html';
-      } else {
-        showError('座席番号の形式が正しくありません（例：C-05）');
-      }
-    }
-    
-    function showError(message) {
-      errorMsg.textContent = message;
-      errorMsg.classList.add('show');
-      setTimeout(() => {
-        errorMsg.classList.remove('show');
-      }, 5000);
-    }
-  </script>
+  <script src="qr_entry.js"></script>
 </body>
 </html>
