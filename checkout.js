@@ -168,15 +168,7 @@ async function handlePaymentComplete() {
 
   try {
     // 支払い初期化API呼び出し
-    const result = await API.initializePayment({
-      seatId: AppState.seatId,
-      amount: AppState.getCartTotal(),
-      items: Object.entries(AppState.cart).map(([itemId, qty]) => ({
-        itemId,
-        quantity: qty
-      })),
-      paymentMethod: CheckoutState.paymentMethod || 'cash'
-    });
+    const result = await API.initializePayment(AppState.seatId);
 
     // 注文を履歴に追加
     const order = {

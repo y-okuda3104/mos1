@@ -282,13 +282,22 @@ const orderManager = {
       return;
     }
 
-    // AppState を使用して注文を送信
-    const orderId = submitOrder();
-    
-    if (!orderId) {
-      this.showMessage('注文処理に失敗しました');
-      return;
-    }
+    // 注文オブジェクトを作成
+    const order = {
+      id: `order_${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      items: { ...AppState.cart },
+      total: AppState.getCartTotal(),
+      status: 'pending',
+      delivered: false
+    };
+
+    // AppState に注文を追加
+    AppState.orders.push(order);
+    AppState.saveOrders();
+
+    // カートをクリア
+    AppState.clearCart();
 
     // UIの更新
     uiManager.renderCart();
