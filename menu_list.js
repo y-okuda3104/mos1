@@ -192,8 +192,6 @@ const menuManager = {
     }
     
     return filtered;
-      return matchesCategory && matchesKeyword;
-    });
   }
 };
 
@@ -373,9 +371,11 @@ const uiManager = {
   handleAddToCart(itemId) {
     try {
       // AppState を使用してカートに追加
-      if (!addToCart(itemId, 1)) {
-        orderManager.showMessage('会計中のため追加できません');
-        return;
+      AppState.cart[itemId] = (AppState.cart[itemId] || 0) + 1;
+      
+      // AppState のカートを保存
+      if (AppState.saveCart && typeof AppState.saveCart === 'function') {
+        AppState.saveCart();
       }
       
       // UIの更新
@@ -478,7 +478,7 @@ const uiManager = {
     if (!listEl || !totalEl) return;
 
     listEl.innerHTML = '';
-    const totalPrice = cartManager.getTotalPrice();
+    const totalPrice = AppState.getCartTotal();
 
     if (Object.keys(AppState.cart).length === 0) {
       listEl.innerHTML = '<li class="empty-cart">カートは空です</li>';
@@ -494,7 +494,7 @@ const uiManager = {
       listEl.appendChild(li);
     });
 
-    totalEl.textContent = `合計: ¥${getCartTotal()}`;
+    totalEl.textContent = `合計: ¥${totalPrice.toLocaleString()}`;
   },
 
   createCartItem(item, quantity) {
@@ -562,8 +562,16 @@ const uiManager = {
       if (checkoutBtn) {
         checkoutBtn.addEventListener('click', (e) => {
           e.preventDefault();
-          startPaymentProcess();
-          window.location.href = 'checkout.html';
+          // 会計準備中モーダルを表示
+          const modal = document.getElementById('paymentPreparingModal');
+          if (modal) {
+            modal.removeAttribute('hidden');
+            modal.removeAttribute('aria-hidden');
+          }
+          // 会計状態を更新
+          if (AppState && typeof AppState.startPaymentProcess === 'function') {
+            AppState.startPaymentProcess();
+          }
         });
         // 会計中は disabled
         checkoutBtn.disabled = !AppState.canOrder;
@@ -691,12 +699,6 @@ const uiManager = {
 /* ===== 初期化 ===== */
 document.addEventListener('DOMContentLoaded', async () => {
   try {
-    // QRスキャン済みかチェック
-    if (!AppState.qrScanned || !AppState.seatId) {
-      window.location.href = 'qr_entry.html';
-      return;
-    }
-
     // メニューロード＆初期化
     await menuManager.loadMenu();
     
