@@ -479,6 +479,9 @@ function showModal(modalId) {
   modal.hidden = false;
   modal.setAttribute('aria-hidden', 'false');
   
+  // 背景スクロール禁止
+  document.body.style.overflow = 'hidden';
+  
   // フォーカス管理
   const focusTarget = modal.querySelector('button, input, select');
   if (focusTarget) focusTarget.focus();
@@ -490,6 +493,9 @@ function hideModal(modalId) {
 
   modal.hidden = true;
   modal.setAttribute('aria-hidden', 'true');
+  
+  // 背景スクロール復帰
+  document.body.style.overflow = '';
 }
 
 function closeCallModal() {

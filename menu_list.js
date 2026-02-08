@@ -601,6 +601,8 @@ const uiManager = {
           if (modal) {
             modal.removeAttribute('hidden');
             modal.removeAttribute('aria-hidden');
+            // 背景スクロール禁止
+            document.body.style.overflow = 'hidden';
           }
           // 会計状態を更新
           if (AppState && typeof AppState.startPaymentProcess === 'function') {
