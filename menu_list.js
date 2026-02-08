@@ -145,12 +145,17 @@ const menuManager = {
     try {
       // 新しいAPI経由でメニューを取得
       const menuItems = await API.getMenuItems();
-      menuState.items = menuItems && menuItems.length ? menuItems : [];
+      if (!menuItems || !Array.isArray(menuItems)) {
+        throw new Error('Invalid menu data returned');
+      }
+      menuState.items = menuItems;
       
       // AppState にもメニューアイテムを保存
       AppState.menuItems = menuState.items;
+      console.log('Menu loaded:', menuState.items.length, 'items');
     } catch (error) {
-      console.warn('Menu API unavailable:', error);
+      console.error('Menu API error:', error);
+      utils.showError('メニュー読み込みエラー: ' + error.message);
       menuState.items = [];
     } finally {
       menuState.isLoading = false;
@@ -158,8 +163,13 @@ const menuManager = {
     }
 
     // UI更新順序：1) メニュー, 2) カテゴリ, 3) ソートボタン
-    uiManager.renderMenu();
-    uiManager.populateCategories();
+    try {
+      uiManager.renderMenu();
+      uiManager.populateCategories();
+      console.log('Menu UI rendered');
+    } catch (e) {
+      console.error('UI render error:', e);
+    }
     // ソートボタンはbindEventHandlers後に生成（イベントリスナー自体の初期化のため）
   },
 
@@ -194,6 +204,8 @@ const menuManager = {
     }
     
     return filtered;
+      return matchesCategory && matchesKeyword;
+    });
   }
 };
 
@@ -468,9 +480,7 @@ const uiManager = {
   updateCartSummary() {
     const summaryCount = document.getElementById('cartCount');
     if (summaryCount) {
-      // AppState.cart から直接計算
-      const totalItems = Object.values(AppState.cart).reduce((sum, qty) => sum + (qty || 0), 0);
-      summaryCount.textContent = String(totalItems);
+      summaryCount.textContent = String(cartManager.getTotalItems());
     }
   },
 
@@ -706,7 +716,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // 売切アイテムを AppState に設定
     const soldOut = await API.getSoldOutItems();
-    AppState.soldOutItems = soldOut;
+    AppState.soldOutItems = soldOut || [];
     
     uiManager.bindEventHandlers();
     uiManager.renderCart();

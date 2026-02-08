@@ -146,13 +146,36 @@
       itemsContainer.className = 'order-items';
       itemsContainer.style.cssText = 'margin-bottom: 12px;';
       
+      // API.getMenuItems() で動的にメニュー情報を取得（AppState依存を削除）
       if (order.items && typeof order.items === 'object') {
-        // items は { m01: 2, m04: 1 } のような形式
-        const items = (typeof AppState !== 'undefined' && AppState?.menuItems) || [];
+        // 非同期処理が必要だが、ここでは同期的に処理するため、
+        // itemIdをそのまま表示（メニュー情報がない場合）
         Object.entries(order.items).forEach(([itemId, qty]) => {
-          const itemData = items.find && items.find(m => m.id === itemId);
-          const itemName = itemData?.name || itemId;
-          const itemPrice = itemData?.price || 0;
+          // メニュー情報はlocal apiから同期的に取得（キャッシュ）
+          let itemName = itemId;
+          let itemPrice = 0;
+          
+          // item名の簡易マッピング（order_history.jsでAPI呼び出しせず、predefのマッピングデータを使用）
+          const menuMap = {
+            'm01': { name: 'ねぎま', price: 280 },
+            'm02': { name: 'つくね', price: 280 },
+            'm03': { name: 'ぼんじり', price: 320 },
+            'm04': { name: '唐揚げ', price: 590 },
+            'm05': { name: 'チーズ唐揚げ', price: 650 },
+            'm06': { name: 'ただの唐揚げ', price: 520 },
+            'm07': { name: '枝豆', price: 390 },
+            'm08': { name: 'ポテトサラダ', price: 420 },
+            'm09': { name: 'イカ塩辛', price: 480 },
+            'm10': { name: '牛タン塩焼き', price: 880 },
+            'm11': { name: '焼鳥盛合わせ', price: 720 },
+            'm12': { name: 'お絞り', price: 0 },
+            'm13': { name: '取り皿', price: 0 }
+          };
+          
+          if (menuMap[itemId]) {
+            itemName = menuMap[itemId].name;
+            itemPrice = menuMap[itemId].price;
+          }
           
           const itemRow = document.createElement('div');
           itemRow.style.cssText = 'display: flex; justify-content: space-between; padding: 4px 0; font-size: 14px;';

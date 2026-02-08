@@ -38,17 +38,17 @@ async function getMenuItems(storeId = '001') {
 function generateDummyMenuItems() {
   return [
     // 串もの
-    { id: 'm01', name: 'ねぎま', category: '串もの', price: 280, image: '🍢', popular: true },
+    { id: 'm01', name: 'ねぎま', category: '串もの', price: 280, image: '🍢', popular: true, soldOut: true },
     { id: 'm02', name: 'つくね', category: '串もの', price: 280, image: '🍢', popular: true },
     { id: 'm03', name: 'ぼんじり', category: '串もの', price: 320, image: '🍢', popular: false },
     
     // 揚げ物
-    { id: 'm04', name: '唐揚げ', category: '揚げ物', price: 590, image: '🍗', popular: true },
+    { id: 'm04', name: '唐揚げ', category: '揚げ物', price: 590, image: '🍗', popular: true, soldOut: true },
     { id: 'm05', name: 'チーズ唐揚げ', category: '揚げ物', price: 650, image: '🍗', popular: true },
     { id: 'm06', name: 'ただの唐揚げ', category: '揚げ物', price: 520, image: '🍗', popular: false },
     
     // 冷菜
-    { id: 'm07', name: '枝豆', category: '冷菜', price: 390, image: '🥬', popular: false },
+    { id: 'm07', name: '枝豆', category: '冷菜', price: 390, image: '🥬', popular: false, soldOut: true },
     { id: 'm08', name: 'ポテトサラダ', category: '冷菜', price: 420, image: '🥔', popular: false },
     { id: 'm09', name: 'イカ塩辛', category: '冷菜', price: 480, image: '🦑', popular: false },
     
@@ -280,9 +280,7 @@ async function getSoldOutItems() {
   if (API_CONFIG.USE_MOCK) {
     return new Promise(resolve => {
       setTimeout(() => {
-        // デモ用：0円メニュー以外から3つを売り切れに
-        // m01: ねぎま, m04: 唐揚げ, m10: 牛タン塩焼き を売り切れに
-        resolve(['m01', 'm04', 'm10']);
+        resolve([]);  // デモでは売切なし
       }, 200);
     });
   }
