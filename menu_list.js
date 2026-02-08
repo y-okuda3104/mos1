@@ -708,6 +708,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 売切アイテムを AppState に設定
     const soldOut = await API.getSoldOutItems();
     menuState.soldOutItems = soldOut;
+    AppState.soldOutItems = soldOut;  // AppState にも設定
     
     uiManager.bindEventHandlers();
     uiManager.renderCart();
