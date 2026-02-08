@@ -1,170 +1,187 @@
 /**
- * shared-state.js - 全ページ共有の状態管理
- * AppState: 店舗全体の状態管理
- * 座席ID、QRスキャン状態、注文、決済状態などを統中管理
+ * グローバルアプリケーション状態管理
+ * 全ページで共有する状態を一元管理
  */
 
 const AppState = {
-  seatId: null,
-  qrScanned: false,
-  canOrder: true,
-  paymentStatus: null, // 'preparing', 'processing', 'completed'
-  cart: {},
-  orders: [],
+  // 座席・認証情報
+  seatId: localStorage.getItem('seatId') || null,
+  qrScanned: !!localStorage.getItem('seatId'),
+  
+  // メニュー・カート情報
   menuItems: [],
-  soldOutItems: []
-};
-
-/**
- * アプリケーション状態を初期化（ページ読み込み時に呼び出す）
- */
-function appStateInit() {
-  const seatId = localStorage.getItem('seatId');
-  if (seatId) {
-    AppState.seatId = seatId;
-    AppState.qrScanned = true;
-    
-    // localStorage から座席データを復元
-    const cartKey = `cart_${seatId}`;
-    const ordersKey = `orders_${seatId}`;
-    const paymentKey = `paymentStatus_${seatId}`;
-    
-    const savedCart = localStorage.getItem(cartKey);
-    if (savedCart) {
-      AppState.cart = JSON.parse(savedCart);
+  cart: {},
+  soldOutItems: [],
+  
+  // 注文・配膳情報
+  orders: [],
+  paymentStatus: 'idle', // idle | processing | completed
+  canOrder: true,
+  
+  // 初期化
+  init() {
+    if (this.seatId) {
+      this.loadCart();
+      this.loadOrders();
     }
-    
-    const savedOrders = localStorage.getItem(ordersKey);
-    if (savedOrders) {
-      AppState.orders = JSON.parse(savedOrders);
-    }
-    
-    const savedPaymentStatus = localStorage.getItem(paymentKey);
-    if (savedPaymentStatus) {
-      AppState.paymentStatus = savedPaymentStatus;
-      if (savedPaymentStatus !== null && savedPaymentStatus !== 'completed') {
-        AppState.canOrder = false;
+  },
+  
+  // 座席設定
+  setSeatId(seatId) {
+    this.seatId = seatId;
+    this.qrScanned = true;
+    localStorage.setItem('seatId', seatId);
+    this.loadCart();
+    this.loadOrders();
+  },
+  
+  // カート操作
+  addToCart(itemId, quantity = 1) {
+    if (!this.seatId) return false;
+    this.cart[itemId] = (this.cart[itemId] || 0) + quantity;
+    this.saveCart();
+    return true;
+  },
+  
+  removeFromCart(itemId) {
+    if (!this.seatId) return false;
+    delete this.cart[itemId];
+    this.saveCart();
+    return true;
+  },
+  
+  getCartTotal() {
+    let total = 0;
+    for (const itemId in this.cart) {
+      const item = this.menuItems.find(i => i.id === itemId);
+      if (item) {
+        total += item.price * this.cart[itemId];
       }
     }
-  }
-}
-
-/**
- * 座席IDを設定（QRスキャン完了後）
- */
-function setSeatId(seatId) {
-  AppState.seatId = seatId;
-  AppState.qrScanned = true;
-  localStorage.setItem('seatId', seatId);
-}
-
-/**
- * カートに商品を追加
- */
-function addToCart(itemId, quantity) {
-  if (!AppState.canOrder) {
-    return false;
-  }
+    return total;
+  },
   
-  if (!AppState.cart[itemId]) {
-    AppState.cart[itemId] = 0;
+  getCartItemCount() {
+    return Object.values(this.cart).reduce((sum, qty) => sum + qty, 0);
+  },
+  
+  // カート永続化
+  saveCart() {
+    if (!this.seatId) return;
+    localStorage.setItem(`cart_${this.seatId}`, JSON.stringify(this.cart));
+  },
+  
+  loadCart() {
+    if (!this.seatId) return;
+    const saved = localStorage.getItem(`cart_${this.seatId}`);
+    this.cart = saved ? JSON.parse(saved) : {};
+  },
+  
+  clearCart() {
+    this.cart = {};
+    this.saveCart();
+  },
+  
+  // 注文操作
+  submitOrder(items) {
+    if (!this.seatId) return false;
+    const order = {
+      id: `order_${Date.now()}`,
+      seatId: this.seatId,
+      items: items,
+      total: this.getCartTotal(),
+      timestamp: new Date().toISOString(),
+      status: 'pending'
+    };
+    this.orders.push(order);
+    this.saveOrders();
+    return true;
+  },
+  
+  // 注文永続化
+  saveOrders() {
+    if (!this.seatId) return;
+    localStorage.setItem(`orders_${this.seatId}`, JSON.stringify(this.orders));
+  },
+  
+  loadOrders() {
+    if (!this.seatId) return;
+    const saved = localStorage.getItem(`orders_${this.seatId}`);
+    this.orders = saved ? JSON.parse(saved) : [];
+  },
+  
+  // 支払い処理
+  startPaymentProcess() {
+    this.paymentStatus = 'processing';
+    this.canOrder = false;
+    localStorage.setItem(`paymentStatus_${this.seatId}`, 'processing');
+  },
+  
+  completePayment() {
+    this.paymentStatus = 'completed';
+    localStorage.setItem(`paymentStatus_${this.seatId}`, 'completed');
+  },
+  
+  resetPaymentStatus() {
+    this.paymentStatus = 'idle';
+    this.canOrder = true;
+    if (this.seatId) {
+      localStorage.removeItem(`paymentStatus_${this.seatId}`);
+    }
+  },
+  
+  // 売切り情報
+  markAsSoldOut(itemId) {
+    if (!this.soldOutItems.includes(itemId)) {
+      this.soldOutItems.push(itemId);
+    }
+  },
+  
+  isSoldOut(itemId) {
+    return this.soldOutItems.includes(itemId);
   }
-  AppState.cart[itemId] += quantity;
-  saveCart();
-  return true;
+};
+
+// グローバルヘルパー関数
+function addToCart(itemId, quantity = 1) {
+  return AppState.addToCart(itemId, quantity);
 }
 
-/**
- * カートから商品を削除
- */
 function removeFromCart(itemId) {
-  delete AppState.cart[itemId];
-  saveCart();
+  return AppState.removeFromCart(itemId);
 }
 
-/**
- * 注文を確定
- */
+function getCartTotal() {
+  return AppState.getCartTotal();
+}
+
+function getCartItemCount() {
+  return AppState.getCartItemCount();
+}
+
 function submitOrder() {
-  if (!AppState.canOrder || Object.keys(AppState.cart).length === 0) {
-    return false;
+  const items = Object.keys(AppState.cart);
+  if (items.length === 0) return null;
+  
+  const result = AppState.submitOrder(items);
+  if (result) {
+    AppState.clearCart();
+    return true;
   }
-  
-  const order = {
-    id: 'ORD-' + Date.now(),
-    items: { ...AppState.cart },
-    timestamp: new Date().toISOString()
-  };
-  
-  AppState.orders.push(order);
-  AppState.cart = {};
-  saveCart();
-  saveOrders();
-  return true;
+  return false;
 }
 
-/**
- * 決済処理を開始
- */
 function startPaymentProcess() {
-  AppState.paymentStatus = 'preparing';
-  AppState.canOrder = false;
-  savePaymentStatus();
+  AppState.startPaymentProcess();
 }
 
-/**
- * 決済処理を完了
- */
 function completePayment() {
-  AppState.paymentStatus = 'completed';
-  savePaymentStatus();
+  AppState.completePayment();
 }
 
-/**
- * 決済ステータスをリセット
- */
 function resetPaymentStatus() {
-  AppState.paymentStatus = null;
-  AppState.canOrder = true;
-  
-  const seatId = AppState.seatId;
-  if (seatId) {
-    const paymentKey = `paymentStatus_${seatId}`;
-    localStorage.removeItem(paymentKey);
-  }
+  AppState.resetPaymentStatus();
 }
 
-/**
- * カートをlocalStorageに保存
- */
-function saveCart() {
-  if (AppState.seatId) {
-    const cartKey = `cart_${AppState.seatId}`;
-    localStorage.setItem(cartKey, JSON.stringify(AppState.cart));
-  }
-}
-
-/**
- * 注文をlocalStorageに保存
- */
-function saveOrders() {
-  if (AppState.seatId) {
-    const ordersKey = `orders_${AppState.seatId}`;
-    localStorage.setItem(ordersKey, JSON.stringify(AppState.orders));
-  }
-}
-
-/**
- * 決済ステータスをlocalStorageに保存
- */
-function savePaymentStatus() {
-  if (AppState.seatId && AppState.paymentStatus) {
-    const paymentKey = `paymentStatus_${AppState.seatId}`;
-    localStorage.setItem(paymentKey, AppState.paymentStatus);
-  }
-}
-
-/**
- * 初期化（DOMContentLoaded時に呼び出される）
- */
-document.addEventListener('DOMContentLoaded', appStateInit);
+// 初期化
+AppState.init();

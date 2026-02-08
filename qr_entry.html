@@ -3,222 +3,241 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="description" content="みどり亭 QRコード読み込み - 座席確認">
+  <meta name="description" content="QRコード入力画面">
   <meta name="theme-color" content="#ff7f32">
-  <title>座席確認 - みどり亭</title>
+  <title>QRコード入力 - みどり亭</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-      background: linear-gradient(135deg, #ff7f32 0%, #ff9c52 100%);
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #333;
+      padding: 20px;
     }
+    
     .container {
       background: white;
-      border-radius: 12px;
-      padding: 2rem;
-      max-width: 500px;
-      width: 90%;
+      border-radius: 16px;
       box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+      max-width: 400px;
+      width: 100%;
+      padding: 40px;
       text-align: center;
     }
+    
     h1 {
-      font-size: 1.8rem;
-      margin-bottom: 1rem;
-      color: #ff7f32;
+      font-size: 24px;
+      color: #333;
+      margin-bottom: 10px;
     }
-    .description {
+    
+    .subtitle {
       color: #666;
-      margin-bottom: 2rem;
-      font-size: 0.95rem;
+      margin-bottom: 30px;
+      font-size: 14px;
     }
-    .form-group {
-      margin-bottom: 1.5rem;
-      text-align: left;
+    
+    .input-group {
+      margin: 20px 0;
     }
+    
     label {
       display: block;
-      margin-bottom: 0.5rem;
-      font-weight: 600;
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 8px;
+      text-align: left;
+      font-size: 14px;
     }
-    input, select {
+    
+    input[type="text"] {
       width: 100%;
-      padding: 0.75rem;
-      border: 1px solid #ddd;
-      border-radius: 6px;
-      font-size: 1rem;
-      font-family: inherit;
+      padding: 12px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      font-size: 16px;
+      transition: border-color 0.3s;
     }
-    input:focus, select:focus {
+    
+    input[type="text"]:focus {
       outline: none;
       border-color: #ff7f32;
-      box-shadow: 0 0 0 3px rgba(255, 127, 50, 0.1);
     }
-    .button-group {
-      display: flex;
-      gap: 1rem;
-      margin-top: 2rem;
+    
+    input::placeholder {
+      color: #bbb;
     }
+    
     button {
-      flex: 1;
-      padding: 0.75rem 1.5rem;
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
       border: none;
-      border-radius: 6px;
-      font-size: 1rem;
-      font-weight: 600;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: bold;
       cursor: pointer;
-      transition: all 0.3s ease;
+      transition: all 0.3s;
     }
+    
     .btn-primary {
       background: #ff7f32;
       color: white;
     }
+    
     .btn-primary:hover {
-      background: #e67e22;
+      background: #ff6b00;
       transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(255, 127, 50, 0.4);
     }
+    
     .btn-secondary {
-      background: #f0f0f0;
+      background: #eee;
       color: #333;
     }
+    
     .btn-secondary:hover {
-      background: #e0e0e0;
+      background: #ddd;
     }
+    
+    .divider {
+      margin: 20px 0;
+      color: #999;
+      font-size: 14px;
+    }
+    
+    .info-text {
+      background: #f0f0f0;
+      padding: 12px;
+      border-radius: 8px;
+      margin-top: 20px;
+      font-size: 12px;
+      color: #666;
+      line-height: 1.6;
+    }
+    
     .error {
-      color: #d32f2f;
-      margin-top: 1rem;
-      font-size: 0.9rem;
+      background: #fee;
+      color: #c00;
+      padding: 12px;
+      border-radius: 8px;
+      margin: 10px 0;
       display: none;
     }
-    .info {
-      background: #e3f2fd;
-      border-left: 4px solid #2196F3;
-      padding: 1rem;
-      margin-bottom: 1.5rem;
-      border-radius: 4px;
-      text-align: left;
+    
+    .error.show {
+      display: block;
     }
-    .info h3 {
-      color: #1976D2;
-      margin-bottom: 0.5rem;
-    }
-    .info p {
-      color: #555;
-      font-size: 0.9rem;
+    
+    .logo {
+      font-size: 48px;
+      margin-bottom: 10px;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>🔔 座席確認</h1>
-    <p class="description">座席を選択またはQRコードをスキャンしてください</p>
+    <div class="logo">🍶</div>
+    <h1>居酒屋みどり亭</h1>
+    <p class="subtitle">入店手続き</p>
     
-    <div class="info">
-      <h3>デモモード</h3>
-      <p>QRコード入力: SEAT:C-01 ～ SEAT:C-10 (カウンター席)</p>
+    <div class="input-group">
+      <label for="qrInput">QRコードを読み込む</label>
+      <input type="text" id="qrInput" placeholder="QRコードを読み込んでください" autofocus>
     </div>
-
-    <form id="qrForm">
-      <div class="form-group">
-        <label for="qrInput">QRコード/座席ID入力:</label>
-        <input type="text" id="qrInput" placeholder="QRコードをスキャンまたは SEAT:C-05 と入力">
-      </div>
-
-      <div class="form-group">
-        <label for="seatSelect">または座席を選択:</label>
-        <select id="seatSelect">
-          <option value="">-- 座席を選択 --</option>
-          <optgroup label="カウンター席">
-            <option value="C-01">C-01</option>
-            <option value="C-02">C-02</option>
-            <option value="C-03">C-03</option>
-            <option value="C-04">C-04</option>
-            <option value="C-05">C-05</option>
-            <option value="C-06">C-06</option>
-            <option value="C-07">C-07</option>
-            <option value="C-08">C-08</option>
-            <option value="C-09">C-09</option>
-            <option value="C-10">C-10</option>
-          </optgroup>
-        </select>
-      </div>
-
-      <div class="button-group">
-        <button type="submit" class="btn-primary">進む</button>
-        <button type="button" class="btn-secondary" id="demoBtn">デモ開始</button>
-      </div>
-    </form>
-
+    
+    <button class="btn-primary" id="submitBtn">入店開始</button>
+    
+    <div class="divider">またはマニュアル入力</div>
+    
+    <div class="input-group">
+      <label for="seatInput">座席番号を入力</label>
+      <input type="text" id="seatInput" placeholder="例：C-05">
+    </div>
+    
+    <button class="btn-secondary" id="manualBtn">座席番号で入店</button>
+    
     <div class="error" id="errorMsg"></div>
+    
+    <div class="info-text">
+      <strong>使用例（テスト用）:</strong><br>
+      QRコード欄に「SEAT:C-05」と入力してください
+    </div>
   </div>
-
+  
   <script src="shared-state.js"></script>
   <script src="api.js"></script>
   <script>
-    document.getElementById('qrForm').addEventListener('submit', handleQRSubmit);
-    document.getElementById('demoBtn').addEventListener('click', startDemo);
-    document.getElementById('qrInput').addEventListener('change', handleQRInput);
-
-    async function handleQRSubmit(e) {
-      e.preventDefault();
-      const qrInput = document.getElementById('qrInput').value.trim();
-      const seatSelect = document.getElementById('seatSelect').value;
-      const seatId = qrInput || seatSelect;
-
-      if (!seatId) {
-        showError('座席を選択してください');
+    const qrInput = document.getElementById('qrInput');
+    const seatInput = document.getElementById('seatInput');
+    const submitBtn = document.getElementById('submitBtn');
+    const manualBtn = document.getElementById('manualBtn');
+    const errorMsg = document.getElementById('errorMsg');
+    
+    // QRコード自動送信（キー入力で完了を検出）
+    qrInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        submitQR();
+      }
+    });
+    
+    submitBtn.addEventListener('click', submitQR);
+    manualBtn.addEventListener('click', submitManual);
+    
+    async function submitQR() {
+      const qrCode = qrInput.value.trim();
+      if (!qrCode) {
+        showError('QRコードを入力してください');
         return;
       }
-
-      await proceedWithSeat(seatId);
-    }
-
-    async function handleQRInput(e) {
-      const input = e.target.value.trim();
-      if (input) {
-        document.getElementById('seatSelect').value = '';
-      }
-    }
-
-    function startDemo() {
-      proceedWithSeat('C-05');
-    }
-
-    async function proceedWithSeat(seatId) {
+      
       try {
-        // QRコード検証（形式：SEAT:C-05 または C-05）
-        let qrData = seatId;
-        if (!seatId.includes('SEAT:')) {
-          qrData = `SEAT:${seatId}`;
+        const result = await API.validateQRCode(qrCode);
+        if (result.valid && result.seatId) {
+          AppState.setSeatId(result.seatId);
+          window.location.href = 'top_menu.html';
+        } else {
+          showError('無効なQRコードです');
         }
-
-        const result = await API.validateQRCode(qrData);
-        if (!result.valid) {
-          showError('無効な座席情報です');
-          return;
-        }
-
-        // 座席IDを設定
-        setSeatId(result.seatId);
-        
-        // トップメニューへ遷移
-        window.location.href = 'top_menu.html';
       } catch (error) {
-        console.error('QR処理エラー:', error);
-        showError('処理中にエラーが発生しました');
+        console.error('QR validation error:', error);
+        showError('コード読み込みエラーが発生しました');
       }
     }
-
+    
+    function submitManual() {
+      const seat = seatInput.value.trim();
+      if (!seat) {
+        showError('座席番号を入力してください');
+        return;
+      }
+      
+      // 座席番号をノーマライズ (C-05 または C05 など)
+      const normalized = seat.toUpperCase().replace(/\s+/g, '');
+      const match = normalized.match(/^([A-Z])-?(\d{1,2})$/);
+      
+      if (match) {
+        const seatId = `${match[1]}-${String(parseInt(match[2], 10)).padStart(2, '0')}`;
+        AppState.setSeatId(seatId);
+        window.location.href = 'top_menu.html';
+      } else {
+        showError('座席番号の形式が正しくありません（例：C-05）');
+      }
+    }
+    
     function showError(message) {
-      const errorEl = document.getElementById('errorMsg');
-      errorEl.textContent = message;
-      errorEl.style.display = 'block';
+      errorMsg.textContent = message;
+      errorMsg.classList.add('show');
       setTimeout(() => {
-        errorEl.style.display = 'none';
+        errorMsg.classList.remove('show');
       }, 5000);
     }
   </script>

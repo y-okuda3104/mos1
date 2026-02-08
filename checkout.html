@@ -3,118 +3,110 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="description" content="みどり亭 お会計・決済画面">
-  <meta name="theme-color" content="#ff7f32">
-  <title>お会計 - 居酒屋みどり亭</title>
-  <link rel="stylesheet" href="checkout.css">
+  <title>お会計 - みどり亭</title>
+  <link rel="stylesheet" href="top_menu.css">
+  <style>
+    .checkout-container {
+      max-width: 600px;
+      margin: 40px auto;
+      padding: 20px;
+    }
+    
+    .loading-state {
+      text-align: center;
+      padding: 60px 20px;
+    }
+    
+    .loading-state h2 {
+      font-size: 24px;
+      margin-bottom: 20px;
+    }
+    
+    .loading-spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid #f0f0f0;
+      border-top: 4px solid #ff7f32;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 20px auto;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    .completed-state {
+      text-align: center;
+      padding: 40px 20px;
+    }
+    
+    .completed-state .icon {
+      font-size: 64px;
+      margin: 20px 0;
+    }
+    
+    .receipt {
+      background: #f9f9f9;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+      text-align: left;
+    }
+    
+    .receipt-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .receipt-item:last-child {
+      border-bottom: none;
+    }
+    
+    .receipt-total {
+      display: flex;
+      justify-content: space-between;
+      padding: 12px 0;
+      margin-top: 12px;
+      border-top: 2px solid #333;
+      font-weight: bold;
+      font-size: 18px;
+    }
+    
+    .btn-return {
+      display: block;
+      margin: 20px auto;
+      padding: 12px 40px;
+      background: #ff7f32;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    
+    .btn-return:hover {
+      background: #ff6b00;
+    }
+  </style>
 </head>
 <body>
-  <!-- ヘッダー -->
   <header class="app-header" role="banner">
-    <div class="header-inner">
-      <h1>お会計</h1>
-      <div class="status">
-        <span id="seatLabel">席：C-05</span>
-      </div>
-    </div>
+    <h1>お会計</h1>
   </header>
-
-  <!-- メインコンテンツ -->
-  <main class="checkout-container" role="main">
-    <!-- 0. 支払い準備中の画面 -->
-    <section id="paymentProcessing" class="payment-state hidden" role="region" aria-label="支払い処理中">
-      <div class="processing-box">
-        <div class="spinner"></div>
-        <h2>決済処理中...</h2>
-        <p>お支払い方法を選択してください</p>
-        
-        <div class="payment-methods">
-          <button class="payment-method" id="methodCard" data-method="card">
-            <span class="icon">💳</span>
-            <span>クレジットカード</span>
-          </button>
-          <button class="payment-method" id="methodCash" data-method="cash">
-            <span class="icon">💵</span>
-            <span>現金</span>
-          </button>
-          <button class="payment-method" id="methodQR" data-method="qr">
-            <span class="icon">📱</span>
-            <span>QR決済</span>
-          </button>
-        </div>
-      </div>
-    </section>
-
-    <!-- 1. 注文内容概要 -->
-    <section id="orderSummary" class="section" role="region" aria-label="注文内容">
-      <h2>注文内容</h2>
-      <div id="orderItems" class="order-items">
-        <!-- 動的に生成される -->
-      </div>
-    </section>
-
-    <!-- 2. 請求額 -->
-    <section id="billSummary" class="section bill-summary" role="region" aria-label="請求額">
-      <div class="bill-row">
-        <span>小計</span>
-        <span id="subtotal">¥0</span>
-      </div>
-      <div class="bill-row">
-        <span>税金</span>
-        <span id="tax">¥0</span>
-      </div>
-      <hr>
-      <div class="bill-row total">
-        <span>合計</span>
-        <span id="total">¥0</span>
-      </div>
-    </section>
-
-    <!-- 3. 支払い方法選択 -->
-    <section id="paymentMethod" class="section" role="region" aria-label="支払い方法選択">
-      <h2>支払い方法</h2>
-      <div class="method-buttons">
-        <button class="payment-btn" id="btn-card" data-method="card">
-          💳 カード
-        </button>
-        <button class="payment-btn" id="btn-cash" data-method="cash">
-          💵 現金
-        </button>
-      </div>
-    </section>
-
-    <!-- 4. 確認ボタン -->
-    <section id="confirmSection" class="section action-buttons" role="region" aria-label="操作ボタン">
-      <button id="btnConfirmPayment" class="primary" type="button">
-        決済を実行
-      </button>
-      <button id="btnCancel" class="secondary" type="button">
-        キャンセル
-      </button>
-    </section>
-
-    <!-- 5. 処理中表示 -->
-    <section id="processingSection" class="section processing" hidden role="region" aria-label="処理中表示">
-      <div class="processing-animation">
-        <div class="spinner"></div>
-        <p>処理中...</p>
-      </div>
-    </section>
-
-    <!-- 6. 完了画面 -->
-    <section id="completionSection" class="section completion" hidden role="region" aria-label="決済完了">
-      <div class="completion-box">
-        <div class="checkmark">✓</div>
-        <h2>決済が完了しました</h2>
-        <p>ご利用ありがとうございました</p>
-        <button id="btnReturnHome" class="primary full-width" type="button">
-          トップに戻る
-        </button>
-      </div>
-    </section>
+  
+  <main class="checkout-container" id="checkoutContent">
+    <div class="loading-state">
+      <h2>会計処理中</h2>
+      <p>会計をお受けしています。お待たせします。</p>
+      <div class="loading-spinner"></div>
+    </div>
   </main>
-
-  <!-- スクリプト読み込み -->
+  
   <script src="shared-state.js"></script>
   <script src="api.js"></script>
   <script src="checkout.js"></script>

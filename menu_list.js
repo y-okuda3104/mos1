@@ -141,80 +141,26 @@ const menuManager = {
     menuState.isLoading = true;
     
     try {
-      // API.getMenuItems() を使用してメニュー取得
-      const items = await API.getMenuItems(MENU_CONFIG.STORE_ID);
-      menuState.items = items && items.length ? items : this.generateDummyMenu();
+      const response = await API.getMenuItems();
+      menuState.items = response.items && response.items.length ? response.items : [];
     } catch (error) {
-      console.warn('Menu API unavailable, using dummy menu:', error);
-      menuState.items = this.generateDummyMenu();
+      console.warn('Menu API unavailable:', error);
+      menuState.items = [];
     } finally {
       menuState.isLoading = false;
     }
 
-    // メニュー表示の初期化
-    uiManager.populateCategories();
     uiManager.renderMenu();
-  },
-
-  async fetchMenuFromAPI() {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), MENU_CONFIG.API.TIMEOUT_MS);
-
-    try {
-      const response = await fetch(
-        `${MENU_CONFIG.API.MENU_ENDPOINT}?storeId=${MENU_CONFIG.STORE_ID}`,
-        { signal: controller.signal }
-      );
-      
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      return await response.json();
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  },
-
-  generateDummyMenu() {
-    return [
-      { id: 'm01', name: '枝豆', category: '冷菜', price: 390, image: '🥬' },
-      { id: 'm02', name: '唐揚げ', category: '揚げ物', price: 590, image: '🍗' },
-      { id: 'm03', name: 'だし巻き卵', category: '卵料理', price: 450, image: '🥚', soldOut: true },
-      { id: 'm04', name: 'もつ煮込み', category: '煮込み', price: 520, image: '🍲' },
-      { id: 'm05', name: 'チーズ唐揚げ', category: '揚げ物', price: 650, image: '🧀' },
-      { id: 'm06', name: 'ポテトサラダ', category: '冷菜', price: 420, image: '🥔' },
-      { id: 'm07', name: '牛タン塩焼き', category: '焼き物', price: 880, image: '🥩', soldOut: true },
-      { id: 'm08', name: 'イカ塩辛', category: '冷菜', price: 480, image: '🦑' },
-      { id: 'm09', name: '豚足揚げ', category: '揚げ物', price: 520, image: '🍖' },
-      { id: 'm10', name: '明太バター', category: '冷菜', price: 540, image: '🧈' },
-      { id: 'm11', name: '焼鳥盛合わせ', category: '焼き物', price: 720, image: '🔥' },
-      { id: 'm12', name: 'お絞り', category: '取り皿', price: 0, image: '🧻' }
-    ];
-  },
-
-  getCategoryByIndex(index) {
-    const categories = ['冷菜', '揚げ物', '卵料理', '煮込み', '焼き物', '取り皿'];
-    return categories[index % categories.length];
+    uiManager.populateCategories();
   },
 
   filterItems(keyword, category) {
-    let filtered = menuState.items.filter(item => {
+    return menuState.items.filter(item => {
       const matchesCategory = !category || item.category === category;
       const matchesKeyword = !keyword || 
         item.name.toLowerCase().includes(keyword.toLowerCase());
       return matchesCategory && matchesKeyword;
     });
-
-    // ソート処理（デフォルト：名前順）
-    const sortBy = document.querySelector('[data-sort]')?.dataset.sort || 'name';
-    if (sortBy === 'price') {
-      filtered.sort((a, b) => a.price - b.price);
-    } else if (sortBy === 'price-desc') {
-      filtered.sort((a, b) => b.price - a.price);
-    } else {
-      // デフォルト：名前順
-      filtered.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
-    }
-
-    return filtered;
   }
 };
 
@@ -392,8 +338,10 @@ const uiManager = {
 
   handleAddToCart(itemId) {
     try {
-      // AppState を使用してカートに追加
-      if (!addToCart(itemId, 1)) {
+      // AppState経由でカートに追加
+      const result = AppState.addToCart(itemId, 1);
+      
+      if (!result) {
         orderManager.showMessage('会計中のため追加できません');
         return;
       }
@@ -488,7 +436,7 @@ const uiManager = {
   updateCartSummary() {
     const summaryCount = document.getElementById('cartCount');
     if (summaryCount) {
-      summaryCount.textContent = String(cartManager.getTotalItems());
+      summaryCount.textContent = String(AppState.getCartItemCount());
     }
   },
 
@@ -498,7 +446,6 @@ const uiManager = {
     if (!listEl || !totalEl) return;
 
     listEl.innerHTML = '';
-    const totalPrice = cartManager.getTotalPrice();
 
     if (Object.keys(AppState.cart).length === 0) {
       listEl.innerHTML = '<li class="empty-cart">カートは空です</li>';
@@ -507,14 +454,14 @@ const uiManager = {
     }
 
     Object.entries(AppState.cart).forEach(([itemId, quantity]) => {
-      const item = menuState.items.find(i => i.id === itemId) || 
+      const item = AppState.menuItems.find(i => i.id === itemId) || 
         { id: itemId, name: itemId, price: 0 };
       
       const li = this.createCartItem(item, quantity);
       listEl.appendChild(li);
     });
 
-    totalEl.textContent = `合計: ¥${getCartTotal()}`;
+    totalEl.textContent = `合計: ¥${AppState.getCartTotal()}`;
   },
 
   createCartItem(item, quantity) {
@@ -533,12 +480,18 @@ const uiManager = {
     const controls = document.createElement('div');
     controls.className = 'cart-item__controls';
     
-    const decreaseBtn = this.createCartButton('−', `減らす ${item.name}`, () => 
-      cartManager.decreaseQuantity(item.id)
-    );
-    const increaseBtn = this.createCartButton('+', `増やす ${item.name}`, () => 
-      cartManager.increaseQuantity(item.id)
-    );
+    const decreaseBtn = this.createCartButton('−', `減らす ${item.name}`, () => {
+      if (quantity > 1) {
+        AppState.cart[item.id] = quantity - 1;
+      } else {
+        AppState.removeFromCart(item.id);
+      }
+      this.renderCart();
+    });
+    const increaseBtn = this.createCartButton('+', `増やす ${item.name}`, () => {
+      AppState.addToCart(item.id, 1);
+      this.renderCart();
+    });
     
     controls.appendChild(decreaseBtn);
     controls.appendChild(increaseBtn);
@@ -582,8 +535,8 @@ const uiManager = {
       if (checkoutBtn) {
         checkoutBtn.addEventListener('click', (e) => {
           e.preventDefault();
-          startPaymentProcess();
-          window.location.href = 'checkout.html';
+          // 会計モーダルを表示
+          showCheckoutModal();
         });
         // 会計中は disabled
         checkoutBtn.disabled = !AppState.canOrder;
@@ -611,7 +564,12 @@ const uiManager = {
     }
   },
 
-  bindOrderHandlers() {\n    const confirmBtn = document.getElementById('confirmOrder');\n    if (confirmBtn) {\n      confirmBtn.addEventListener('click', () => orderManager.confirmOrder());\n    }\n  },
+  bindOrderHandlers() {
+    const confirmBtn = document.getElementById('confirmOrder');
+    if (confirmBtn) {
+      confirmBtn.addEventListener('click', () => orderManager.confirmOrder());
+    }
+  },
 
   toggleCartDetails() {
     const details = document.getElementById('miniCartDetails');
@@ -662,9 +620,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     // メニューロード＆初期化
     await menuManager.loadMenu();
     
+    // AppState.menuItems に設定
+    AppState.menuItems = menuState.items;
+    
     // 売切アイテムを AppState に設定
-    const soldOut = await API.getSoldOutItems();
-    menuState.soldOutItems = soldOut;
+    try {
+      const soldOut = await API.getSoldOutItems();
+      AppState.soldOutItems = soldOut;
+      menuState.soldOutItems = soldOut;
+    } catch (error) {
+      console.warn('Failed to load sold out items:', error);
+      AppState.soldOutItems = [];
+      menuState.soldOutItems = [];
+    }
     
     uiManager.bindEventHandlers();
     uiManager.renderCart();
@@ -678,6 +646,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.error('Menu app initialization failed:', error);
   }
 });
+
+/* ===== 会計処理モーダル ===== */
+function showCheckoutModal() {
+  const modal = document.getElementById('checkoutModal');
+  if (!modal) return;
+  
+  modal.removeAttribute('hidden');
+  modal.removeAttribute('aria-hidden');
+  
+  // 2.5秒後に会計画面へ遷移
+  setTimeout(() => {
+    startPaymentProcess();
+    window.location.href = 'checkout.html';
+  }, 2500);
+}
 
 /* ===== 外部API ===== */
 window.markDelivered = orderManager.markAsDelivered.bind(orderManager);

@@ -90,6 +90,18 @@
       </button>
     </div>
   </aside>
+
+  <!-- 会計処理中モーダル -->
+  <div id="checkoutModal" class="modal" hidden aria-hidden="true">
+    <div class="modal__backdrop"></div>
+    <div class="modal__dialog" role="dialog" aria-modal="true">
+      <h3>会計を開始します</h3>
+      <p>会計処理中...お会計ページへ遷移します</p>
+      <div class="progress-bar" style="margin: 16px 0; height: 6px; background: #eee; border-radius: 3px; overflow: hidden;">
+        <div class="progress-fill" style="height: 100%; background: linear-gradient(90deg, #ff7f32, #ff8f45); width: 0%; animation: progress 2.5s ease-in-out forwards;\"></div>
+      </div>
+    </div>
+  </div>
   
   <!-- スクリプト読み込み -->
   <script src="shared-state.js"></script>

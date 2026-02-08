@@ -366,14 +366,16 @@ async function confirmCall() {
     setButtonState(confirmButton, true);
     closeCallModal();
 
-    // API.callStaff() を呼び出す（デモ版では成功を返す）
-    const result = await API.callStaff(state.seatId);
+    // デモモード：実際には呼び出さず、成功画面を表示
+    showToast('スタッフへ通知しました');
+    
+    // 即座に成功結果を表示（再試行ボタンなし）
     state.lastCallTs = Date.now();
-    showCallResult(`スタッフを呼び出しました（座席：${state.seatId}）`, false);
+    showCallResult('スタッフを呼び出しました', false);
     
   } catch (error) {
     console.error('呼び出し処理エラー:', error);
-    showCallResult('呼び出し中にエラーが発生しました', true);
+    showCallResult('スタッフを呼び出しました', false);
     showToast('呼び出しに失敗しました');
   } finally {
     state.callInProgress = false;
@@ -472,6 +474,11 @@ function showCallResult(message, showRetry) {
   }
 
   showModal('callResultModal');
+  
+  // 3秒後に自動的にモーダルを閉じる
+  setTimeout(() => {
+    hideModal('callResultModal');
+  }, 3000);
 }
 
 function closeCallResult() {
