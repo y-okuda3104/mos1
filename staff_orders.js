@@ -28,6 +28,14 @@ const StaffOrdersModule = (() => {
       DELIVERED: 'delivered'        // 配膳済み
     },
     
+    // 優先度レベルの定義（未配膳商品数で自動判定）
+    PRIORITY_LEVELS: {
+      CRITICAL: { min: 5, emoji: '🔴', label: '緊急', color: '#ef4444' },      // 5件以上
+      HIGH: { min: 3, emoji: '🟠', label: '高', color: '#f59e0b' },            // 3～4件
+      MEDIUM: { min: 1, emoji: '🟡', label: '中', color: '#fbbf24' },          // 1～2件
+      LOW: { min: 0, emoji: '🟢', label: '低', color: '#10b981' }              // 完了
+    },
+    
     // 色定義（顧客画面と統一）
     COLORS: {
       PRIMARY: '#ff7f32',
@@ -50,10 +58,10 @@ const StaffOrdersModule = (() => {
     },
     
     // UI状態
-    currentFilter: 'all',       // all | pending | in-progress | delivered
-    currentSort: 'seat-asc',    // seat-asc | seat-desc | time-newest | time-oldest
-    viewMode: 'compact',        // compact | detailed
-    selectedItems: new Set(),   // 選択中の商品IDs
+    currentFilter: 'all',           // all | pending | in-progress | delivered
+    currentSort: 'priority-desc',   // ★ デフォルト：未配膳商品数が多い順
+    viewMode: 'compact',            // compact | detailed
+    selectedItems: new Set(),       // 選択中の商品IDs
     isPolling: false,
     lastPolledAt: null,
     
@@ -75,6 +83,35 @@ const StaffOrdersModule = (() => {
       const normalized = String(input).trim().toUpperCase();
       const match = normalized.match(/^([A-Z])[-\s]?(\d{1,2})$/);
       return match ? `${match[1]}-${String(parseInt(match[2], 10)).padStart(2, '0')}` : null;
+    },
+
+    /**
+     * 座席の未配膳商品数を計算（純粋関数）
+     * @param {Array} orders - 注文配列
+     * @param {string} seatId - 座席ID
+     * @returns {number} 未配膳商品数
+     */
+    calculateUndeliveredCount(orders, seatId) {
+      return orders
+        .filter(order => order.seatId === seatId)
+        .reduce((sum, order) => sum + order.items.filter(item => !item.delivered).length, 0);
+    },
+
+    /**
+     * 座席の優先度レベルを判定（純粋関数）
+     * @param {number} undeliveredCount - 未配膳商品数
+     * @returns {Object} 優先度レベルオブジェクト
+     */
+    getPriorityLevel(undeliveredCount) {
+      if (undeliveredCount >= CONFIG.PRIORITY_LEVELS.CRITICAL.min) {
+        return CONFIG.PRIORITY_LEVELS.CRITICAL;
+      } else if (undeliveredCount >= CONFIG.PRIORITY_LEVELS.HIGH.min) {
+        return CONFIG.PRIORITY_LEVELS.HIGH;
+      } else if (undeliveredCount >= CONFIG.PRIORITY_LEVELS.MEDIUM.min) {
+        return CONFIG.PRIORITY_LEVELS.MEDIUM;
+      } else {
+        return CONFIG.PRIORITY_LEVELS.LOW;
+      }
     },
 
     /**
@@ -180,6 +217,7 @@ const StaffOrdersModule = (() => {
 
     /**
      * 注文をソート（純粋関数）
+     * ★ 新規：未配膳商品数優先度順を追加
      * @param {Array} orders - 注文配列
      * @param {string} sortOrder - ソート順序
      * @returns {Array} ソート済み配列
@@ -188,6 +226,21 @@ const StaffOrdersModule = (() => {
       const sorted = [...orders];
       
       switch (sortOrder) {
+        case 'priority-desc':
+          // ★ 新規：未配膳商品数が多い順（デフォルト）
+          return sorted.sort((a, b) => {
+            const aUndelivered = a.items.filter(item => !item.delivered).length;
+            const bUndelivered = b.items.filter(item => !item.delivered).length;
+            // 多い順 → 小さい順
+            return bUndelivered - aUndelivered;
+          });
+        case 'priority-asc':
+          // ★ 新規：未配膳商品数が少ない順
+          return sorted.sort((a, b) => {
+            const aUndelivered = a.items.filter(item => !item.delivered).length;
+            const bUndelivered = b.items.filter(item => !item.delivered).length;
+            return aUndelivered - bUndelivered;
+          });
         case 'seat-asc':
           return sorted.sort((a, b) => a.seatId.localeCompare(b.seatId));
         case 'seat-desc':
@@ -466,16 +519,41 @@ const StaffOrdersModule = (() => {
       const container = document.getElementById('ordersContainer');
       if (!container) return;
 
-      const orders = stateManager.getFilteredAndSortedOrders();
+      // ★ 座席ごとにグルーピング
+      const groupedBySeat = utils.groupBySeat(state.allOrders);
+      
+      // ★ 座席別の未配膳商品数で並べ替え
+      const sortedSeats = Object.entries(groupedBySeat)
+        .sort(([seatIdA, ordersA], [seatIdB, ordersB]) => {
+          const undeliveredA = ordersA.reduce((sum, order) => 
+            sum + order.items.filter(item => !item.delivered).length, 0
+          );
+          const undeliveredB = ordersB.reduce((sum, order) => 
+            sum + order.items.filter(item => !item.delivered).length, 0
+          );
+          return undeliveredB - undeliveredA;  // 多い順
+        });
 
-      if (orders.length === 0) {
+      // フィルタを適用
+      const filtered = utils.filterOrders(state.allOrders, state.currentFilter);
+      
+      if (filtered.length === 0) {
         this.showEmptyState();
         return;
       }
 
-      const groupedBySeat = utils.groupBySeat(orders);
-      const html = Object.entries(groupedBySeat)
-        .map(([seatId, seatOrders]) => this.renderSeatGroup(seatId, seatOrders))
+      const html = sortedSeats
+        .map(([seatId, seatOrders]) => {
+          // この座席のフィルタ後の注文のみを使用
+          const filteredSeatOrders = seatOrders.filter(order => 
+            filtered.some(f => f.orderId === order.orderId)
+          );
+          
+          if (filteredSeatOrders.length === 0) return '';
+          
+          return this.renderSeatGroup(seatId, filteredSeatOrders);
+        })
+        .filter(html => html !== '')  // 空文字列を除外
         .join('');
 
       container.querySelector('#seatGroupsContainer').innerHTML = html;
@@ -484,6 +562,7 @@ const StaffOrdersModule = (() => {
 
     /**
      * 座席グループをレンダリング
+     * ★ 修正：優先度インジケータと進捗度バーを追加
      * @param {string} seatId - 座席ID
      * @param {Array} orders - 座席の注文配列
      * @returns {string} HTML文字列
@@ -493,22 +572,43 @@ const StaffOrdersModule = (() => {
       const deliveredItems = orders.reduce((sum, order) => 
         sum + order.items.filter(item => item.delivered).length, 0
       );
+      const undeliveredItems = totalItems - deliveredItems;
+
+      // ★ その座席全体の優先度を計算
+      const priorityLevel = utils.getPriorityLevel(undeliveredItems);
+      const progressPercent = totalItems > 0 ? Math.round((deliveredItems / totalItems) * 100) : 100;
 
       const statusBadge = this.getStatusBadge(deliveredItems, totalItems);
 
       // ヘッダー
       let html = `
-        <section class="seat-group" data-seat-id="${utils.escapeHtml(seatId)}">
+        <section class="seat-group" data-seat-id="${utils.escapeHtml(seatId)}" data-priority="${priorityLevel.label}">
           <div class="seat-group__header">
+            <!-- ★ 優先度インジケータ -->
+            <div class="seat-group__priority-indicator" title="優先度: ${priorityLevel.label}" style="color: ${priorityLevel.color}">
+              <span class="priority-emoji">${priorityLevel.emoji}</span>
+              <span class="priority-label">${priorityLevel.label}</span>
+            </div>
+
             <h2 class="seat-group__title">
               <span class="seat-id">${utils.escapeHtml(seatId)}</span>
               <span class="order-count" title="${totalItems}件の商品">${totalItems}件</span>
             </h2>
             <div class="seat-group__status">
               ${statusBadge}
-              <span class="delivery-progress">${deliveredItems}/${totalItems}</span>
+              <span class="delivery-progress">
+                ${deliveredItems}/${totalItems}
+                ${undeliveredItems > 0 ? ` <span class="undelivered-badge">${undeliveredItems}件未配膳</span>` : ''}
+              </span>
             </div>
           </div>
+
+          <!-- ★ 進捗度バー -->
+          <div class="seat-group__progress-bar" role="progressbar" aria-valuenow="${progressPercent}" aria-valuemin="0" aria-valuemax="100">
+            <div class="progress-bar__filled" style="width: ${progressPercent}%; background-color: ${priorityLevel.color};"></div>
+            <span class="progress-bar__text">${progressPercent}%</span>
+          </div>
+
           <div class="seat-group__orders">
       `;
 
